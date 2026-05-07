@@ -1420,6 +1420,69 @@ input[type="file"] { display: none; }
 }
 #ag-close:hover { border-color:var(--red2); color:var(--red2); }
 
+/* ── GALLERY ZOOM ───────────────────────────────────── */
+#ag-img {
+  cursor: zoom-in;
+  transition: transform .25s ease, opacity .15s ease;
+  transform-origin: center center;
+}
+#ag-img.ag-zoomed {
+  cursor: grab;
+  max-width: none !important;
+  max-height: none !important;
+}
+#ag-img.ag-zoomed.ag-dragging {
+  cursor: grabbing;
+  transition: none;
+}
+#ag-img-wrap.ag-zoom-active {
+  overflow: hidden;
+  cursor: grab;
+}
+
+/* ── GALLERY EXTRA COLUMNS ──────────────────────────── */
+#ag-extra-cols {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(0,212,255,.08);
+}
+.ag-extra-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(0,212,255,.06);
+  border: 1px solid rgba(0,212,255,.14);
+  border-radius: 5px;
+  padding: 3px 9px;
+  font-size: 9px;
+  font-weight: 700;
+  white-space: nowrap;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: border-color .12s;
+}
+.ag-extra-chip:hover {
+  border-color: rgba(0,212,255,.35);
+}
+.ag-extra-chip-lbl {
+  color: var(--t3);
+  letter-spacing: .5px;
+  text-transform: uppercase;
+  font-size: 7px;
+  flex-shrink: 0;
+}
+.ag-extra-chip-val {
+  color: var(--tx);
+  font-family: var(--mono);
+  font-size: 9px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* ══════════════════════════════════════════════════════
    SCIFI DASHBOARD — fiel replicación visual
    Basado en imagen de referencia SciFi 2024
@@ -1926,9 +1989,1177 @@ html, body {
 }
 #dyn-rr-sel option { background: #0b1220; }
 
+/* ════════════════════════════════════════════════════════════════════
+   QUANTUM REDESIGN v10 — Cinematic Dashboard (main view only)
+   Paleta neón cyan / azul / violeta  ·  Circuit board animado
+   GPU-friendly  ·  Respeta prefers-reduced-motion
+   ════════════════════════════════════════════════════════════════════ */
+
+/* ── PALETTE BOOST ─────────────────────────────── */
+:root {
+  --bg:        #060912;
+  --bg2:       #0a0f1c;
+  --s1:        #0c1424;
+  --s2:        #101a2e;
+  --s3:        #16223a;
+  --bd:        rgba(120,180,255,.10);
+  --bd2:       rgba(120,180,255,.20);
+  --cyan:      #22f3ff;
+  --cyan2:    #00e5e0;
+  --blue2:     #5aa8ff;
+  --blue3:     #3d7eff;
+  --violet:    #8b6cff;
+  --violet2:   #a578ff;
+  --pink:      #ff5dc8;
+  --green2:    #2ee69c;
+  --red2:      #ff6480;
+  --amber2:    #ffc24a;
+  --tx:        #e6f0ff;
+  --t2:        #88a4c2;
+  --t3:        #3a4f6e;
+  --neon-c: 0 0 12px rgba(34,243,255,.55), 0 0 32px rgba(34,243,255,.18);
+  --neon-b: 0 0 14px rgba(90,168,255,.5),  0 0 36px rgba(90,168,255,.16);
+  --neon-v: 0 0 14px rgba(139,108,255,.5), 0 0 36px rgba(139,108,255,.16);
+}
+
+/* ── CIRCUIT BOARD BACKGROUND ──────────────────── */
+#cb-bg {
+  position: fixed; inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 70% 50% at 18% 12%, rgba(90,168,255,.10) 0%, transparent 55%),
+    radial-gradient(ellipse 60% 50% at 82% 88%, rgba(139,108,255,.10) 0%, transparent 55%),
+    radial-gradient(ellipse 80% 60% at 50% 50%, rgba(34,243,255,.05) 0%, transparent 60%),
+    var(--bg);
+}
+#cb-bg .cb-grid {
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(to right,  rgba(90,168,255,.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(90,168,255,.05) 1px, transparent 1px);
+  background-size: 64px 64px;
+  -webkit-mask-image: radial-gradient(ellipse 90% 90% at 50% 50%, #000 25%, transparent 100%);
+          mask-image: radial-gradient(ellipse 90% 90% at 50% 50%, #000 25%, transparent 100%);
+  opacity: .55;
+}
+#cb-bg .cb-aurora {
+  position: absolute; inset: -20%;
+  background:
+    conic-gradient(from 0deg at 50% 50%,
+      transparent 0deg,
+      rgba(34,243,255,.08) 60deg,
+      transparent 120deg,
+      rgba(139,108,255,.07) 200deg,
+      transparent 280deg,
+      rgba(90,168,255,.06) 340deg,
+      transparent 360deg);
+  filter: blur(46px);
+  opacity: .5;
+  animation: auroraSpin 70s linear infinite;
+  will-change: transform;
+}
+#cb-bg .cb-lines {
+  position: absolute; inset: 0;
+  opacity: .35;
+}
+#cb-bg .cb-line {
+  position: absolute;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+  filter: blur(.5px);
+  animation: lineSweep 9s linear infinite;
+  will-change: transform, opacity;
+}
+#cb-bg .cb-l1 { top: 22%; left: -30%; width: 30%; animation-delay: 0s;   }
+#cb-bg .cb-l2 { top: 58%; left: -30%; width: 25%; animation-delay: 2.2s; background: linear-gradient(90deg, transparent, var(--violet), transparent); }
+#cb-bg .cb-l3 { top: 76%; left: -30%; width: 28%; animation-delay: 4.5s; background: linear-gradient(90deg, transparent, var(--blue2), transparent); }
+#cb-bg .cb-l4 { top: 38%; left: -30%; width: 22%; animation-delay: 6.8s; }
+
+#cb-bg .cb-node {
+  position: absolute;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  animation: nodePulse 4s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+#cb-bg .cb-node::after {
+  content: '';
+  position: absolute; inset: -10px;
+  border-radius: 50%;
+  border: 1px solid currentColor;
+  opacity: .3;
+}
+#cb-bg .cb-n1 { top: 12%; left: 8%;  background: var(--cyan);  color: var(--cyan);  box-shadow: 0 0 10px var(--cyan), 0 0 26px rgba(34,243,255,.6); animation-delay: 0s; }
+#cb-bg .cb-n2 { top: 28%; left: 92%; background: var(--blue2); color: var(--blue2); box-shadow: 0 0 10px var(--blue2),0 0 26px rgba(90,168,255,.6); animation-delay: .8s; }
+#cb-bg .cb-n3 { top: 65%; left: 4%;  background: var(--violet);color: var(--violet);box-shadow: 0 0 10px var(--violet),0 0 26px rgba(139,108,255,.6); animation-delay: 1.6s; }
+#cb-bg .cb-n4 { top: 82%; left: 96%; background: var(--cyan);  color: var(--cyan);  box-shadow: 0 0 10px var(--cyan),  0 0 26px rgba(34,243,255,.6); animation-delay: 2.4s; }
+#cb-bg .cb-n5 { top: 45%; left: 50%; background: var(--blue2); color: var(--blue2); box-shadow: 0 0 8px var(--blue2),0 0 22px rgba(90,168,255,.55); animation-delay: 3.2s; opacity:.6; }
+#cb-bg .cb-n6 { top:  8%; left: 60%; background: var(--violet);color: var(--violet);box-shadow: 0 0 10px var(--violet),0 0 26px rgba(139,108,255,.6); animation-delay: 1.2s; }
+#cb-bg .cb-n7 { top: 92%; left: 35%; background: var(--cyan);  color: var(--cyan);  box-shadow: 0 0 10px var(--cyan),  0 0 26px rgba(34,243,255,.6); animation-delay: 2s; }
+#cb-bg .cb-n8 { top: 35%; left: 25%; background: var(--blue2); color: var(--blue2); box-shadow: 0 0 8px var(--blue2),0 0 20px rgba(90,168,255,.5); animation-delay: 2.8s; opacity:.7; }
+
+@keyframes auroraSpin { to { transform: rotate(360deg); } }
+@keyframes nodePulse {
+  0%, 100% { transform: scale(1);    opacity: .5; }
+  50%      { transform: scale(1.45); opacity: 1; }
+}
+@keyframes lineSweep {
+  0%   { transform: translateX(0);     opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { transform: translateX(500%);  opacity: 0; }
+}
+
+/* Circuit board behind everything */
+html, body { background: transparent !important; }
+#hdr, #mbar, #main, #edge-view, #obs-modal, #img-modal, #gs-url-panel,
+#tabs { position: relative; z-index: 1; }
+#hdr, #mbar, .col, .cbody { background: transparent !important; }
+
+/* ── HEADER REDESIGN ─────────────────────────── */
+#hdr {
+  background: linear-gradient(180deg, rgba(10,15,28,.88) 0%, rgba(6,9,18,.72) 100%) !important;
+  border-bottom: 1px solid rgba(34,243,255,.18) !important;
+  box-shadow: 0 0 28px rgba(34,243,255,.06), 0 1px 0 rgba(90,168,255,.18) !important;
+  -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px);
+  height: 46px;
+}
+#hdr::after {
+  content: '';
+  position: absolute; left: 0; right: 0; bottom: -1px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(34,243,255,.7) 25%, rgba(139,108,255,.7) 50%, rgba(34,243,255,.7) 75%, transparent 100%);
+  background-size: 200% 100%;
+  animation: headerLine 8s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes headerLine {
+  0%, 100% { background-position: 0% 0%; }
+  50%      { background-position: 100% 0%; }
+}
+
+.h-logo {
+  background: linear-gradient(135deg, #ffffff 0%, #22f3ff 50%, #8b6cff 100%);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent !important;
+  text-shadow: none;
+  letter-spacing: 2.5px;
+}
+.h-logo em {
+  background: linear-gradient(135deg, #22f3ff 0%, #8b6cff 100%);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent !important;
+  text-shadow: none !important;
+  font-style: normal;
+}
+
+#h-clock {
+  font-family: var(--mono);
+  color: var(--cyan) !important;
+  text-shadow: 0 0 10px rgba(34,243,255,.65) !important;
+  background: rgba(34,243,255,.06) !important;
+  border: 1px solid rgba(34,243,255,.28) !important;
+  box-shadow: inset 0 0 14px rgba(34,243,255,.08), 0 0 14px rgba(34,243,255,.12) !important;
+  border-radius: 5px;
+}
+
+.h-btn {
+  background: linear-gradient(135deg, rgba(34,243,255,.06), rgba(139,108,255,.06)) !important;
+  border: 1px solid rgba(120,180,255,.22) !important;
+  border-radius: 6px !important;
+  transition: all .25s cubic-bezier(.2,.8,.2,1) !important;
+  position: relative; overflow: hidden;
+}
+.h-btn::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,.18) 50%, transparent 70%);
+  transform: translateX(-100%);
+  transition: transform .55s ease;
+  pointer-events: none;
+}
+.h-btn:hover {
+  border-color: var(--cyan) !important;
+  color: var(--cyan) !important;
+  box-shadow: var(--neon-c);
+  transform: translateY(-1px);
+  background: linear-gradient(135deg, rgba(34,243,255,.14), rgba(139,108,255,.14)) !important;
+}
+.h-btn:hover::before { transform: translateX(100%); }
+
+/* ── METRICS BAR — HOLOGRAPHIC ───────────────── */
+#mbar {
+  background: linear-gradient(180deg, rgba(12,20,36,.82), rgba(6,9,18,.65)) !important;
+  border-bottom: 1px solid rgba(90,168,255,.18) !important;
+  box-shadow: inset 0 0 32px rgba(34,243,255,.05), 0 4px 24px rgba(0,0,0,.5) !important;
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  height: 56px;
+  overflow: hidden;
+}
+#mbar::after {
+  content: '';
+  position: absolute; bottom: 0; left: 0; width: 30%; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(34,243,255,.7) 30%, rgba(139,108,255,.7) 70%, transparent);
+  filter: blur(.4px);
+  animation: scanLine 5.5s linear infinite;
+  pointer-events: none;
+}
+@keyframes scanLine {
+  0%   { transform: translateX(-100%); opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { transform: translateX(450%);  opacity: 0; }
+}
+.mbar-item {
+  border-right: 1px solid rgba(90,168,255,.10) !important;
+  position: relative;
+  transition: background .22s ease;
+}
+.mbar-item::before {
+  content: '';
+  position: absolute; left: 8%; right: 8%; bottom: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+  opacity: 0;
+  transform: scaleX(.4);
+  transition: opacity .22s, transform .22s;
+}
+.mbar-item:hover { background: rgba(34,243,255,.05); }
+.mbar-item:hover::before { opacity: 1; transform: scaleX(1); }
+.mbar-val {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.2px;
+  transition: text-shadow .25s, transform .25s;
+}
+.m-g .mbar-val { color: #2ee69c !important; text-shadow: 0 0 12px rgba(46,230,156,.5) !important; }
+.m-r .mbar-val { color: #ff6480 !important; text-shadow: 0 0 12px rgba(255,100,128,.5) !important; }
+.m-b .mbar-val { color: #5aa8ff !important; text-shadow: 0 0 12px rgba(90,168,255,.6) !important; }
+.m-a .mbar-val { color: #ffc24a !important; text-shadow: 0 0 12px rgba(255,194,74,.5) !important; }
+.m-n .mbar-val { color: var(--tx) !important; }
+.mbar-item:hover .mbar-val { transform: scale(1.08); }
+
+/* ── COLUMNS ─────────────────────────────────── */
+.col {
+  background: linear-gradient(180deg, rgba(12,20,36,.5), rgba(8,12,22,.35)) !important;
+  border-right: 1px solid rgba(90,168,255,.10);
+}
+#c1, #c2, #c3 { box-shadow: 1px 0 0 rgba(34,243,255,.06); }
+
+.chdr {
+  background: linear-gradient(180deg, rgba(16,26,46,.78), rgba(10,15,28,.55)) !important;
+  border-bottom: 1px solid rgba(90,168,255,.18) !important;
+  border-right: 1px solid rgba(90,168,255,.08) !important;
+  position: relative;
+  height: 34px;
+}
+.chdr::before {
+  content: '';
+  position: absolute;
+  left: 12px; top: 50%; transform: translateY(-50%);
+  width: 3px; height: 14px;
+  background: linear-gradient(180deg, var(--cyan), var(--violet));
+  border-radius: 2px;
+  box-shadow: 0 0 8px rgba(34,243,255,.6);
+}
+.chdr-title {
+  padding-left: 9px;
+  background: linear-gradient(90deg, var(--cyan), var(--violet));
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent !important;
+  letter-spacing: 2.5px !important;
+}
+.chdr-badge {
+  font-family: var(--mono);
+  color: var(--cyan) !important;
+  text-shadow: 0 0 8px rgba(34,243,255,.55);
+  background: rgba(34,243,255,.06);
+  border: 1px solid rgba(34,243,255,.22);
+  border-radius: 4px;
+  padding: 1px 7px;
+}
+
+.rh { transition: background .15s; }
+.rh:hover, .rh.drag {
+  background: linear-gradient(180deg, transparent, var(--cyan) 50%, transparent) !important;
+  box-shadow: 0 0 12px var(--cyan);
+}
+
+/* ── C1 CHECKLIST ────────────────────────────── */
+.fsec { border-bottom: 1px solid rgba(90,168,255,.07) !important; }
+.fsec-title {
+  background: linear-gradient(90deg, var(--cyan), var(--violet));
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent !important;
+  letter-spacing: 3px !important;
+  border-bottom: 1px solid rgba(90,168,255,.10) !important;
+}
+.frow label { color: rgba(120,180,255,.48) !important; }
+.frow select {
+  background: rgba(90,168,255,.04) !important;
+  border: 1px solid rgba(90,168,255,.16) !important;
+  border-radius: 6px !important;
+  color: var(--tx) !important;
+  transition: all .22s !important;
+}
+.frow select:hover { border-color: rgba(34,243,255,.4) !important; background: rgba(34,243,255,.06) !important; }
+.frow select:focus {
+  border-color: var(--cyan) !important;
+  box-shadow: 0 0 0 2px rgba(34,243,255,.18), 0 0 14px rgba(34,243,255,.18) !important;
+  background: rgba(34,243,255,.07) !important;
+}
+.frow select.active {
+  border-color: rgba(139,108,255,.55) !important;
+  background: rgba(139,108,255,.08) !important;
+  box-shadow: 0 0 12px rgba(139,108,255,.18);
+}
+.frow select option, .dyn-col-sel option, .frow-dyn-val option, .dyn-img-sel option, #dyn-rr-sel option { background: #0c1424; color: var(--tx); }
+
+/* RUN button — animated gradient + sweep */
+#run-btn {
+  background: linear-gradient(135deg, #3d7eff 0%, #8b6cff 50%, #22f3ff 100%) !important;
+  background-size: 200% 100% !important;
+  background-position: 0% 0% !important;
+  border: 1px solid rgba(34,243,255,.4) !important;
+  box-shadow: 0 0 22px rgba(90,168,255,.32), 0 4px 14px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.18);
+  transition: all .35s cubic-bezier(.2,.8,.2,1) !important;
+  position: relative;
+  overflow: hidden;
+  letter-spacing: 2.5px !important;
+  color: #fff !important;
+}
+#run-btn::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,.32) 50%, transparent 70%);
+  transform: translateX(-100%);
+  transition: transform .7s ease;
+  pointer-events: none;
+}
+#run-btn:hover {
+  background-position: 100% 0% !important;
+  box-shadow: 0 0 36px rgba(34,243,255,.5), 0 0 60px rgba(139,108,255,.3), 0 6px 24px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.3) !important;
+  transform: translateY(-2px);
+}
+#run-btn:hover::before { transform: translateX(100%); }
+#run-btn:active { transform: translateY(0); }
+
+#clr-btn { transition: all .22s !important; }
+#clr-btn:hover {
+  border-color: var(--red2) !important;
+  color: var(--red2) !important;
+  background: rgba(255,100,128,.06) !important;
+  box-shadow: 0 0 14px rgba(255,100,128,.2);
+}
+
+/* ── C2 STAT CARDS — corner brackets ─────────── */
+.scards { gap: 6px !important; padding: 6px !important; background: transparent !important; border-bottom: 1px solid rgba(90,168,255,.1) !important; }
+.scard {
+  background: linear-gradient(135deg, rgba(16,26,46,.82), rgba(10,15,28,.65)) !important;
+  border: 1px solid rgba(90,168,255,.14) !important;
+  border-radius: 7px !important;
+  padding: 12px 14px !important;
+  position: relative;
+  overflow: hidden;
+  transition: transform .25s ease, border-color .25s, box-shadow .25s !important;
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+}
+.scard::before, .scard::after {
+  content: '';
+  position: absolute;
+  width: 12px; height: 12px;
+  border: 1.5px solid var(--cyan);
+  opacity: 0;
+  transition: opacity .25s;
+  pointer-events: none;
+}
+.scard::before { top: 4px; left: 4px;  border-right: none; border-bottom: none; }
+.scard::after  { bottom: 4px; right: 4px; border-left: none; border-top: none; }
+.scard:hover {
+  border-color: rgba(34,243,255,.4) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 28px rgba(0,0,0,.5), 0 0 22px rgba(34,243,255,.18) !important;
+  background: linear-gradient(135deg, rgba(34,243,255,.06), rgba(16,26,46,.85)) !important;
+}
+.scard:hover::before, .scard:hover::after { opacity: 1; }
+.sc-g .sc-val { color: #2ee69c !important; text-shadow: 0 0 10px rgba(46,230,156,.45) !important; }
+.sc-r .sc-val { color: #ff6480 !important; text-shadow: 0 0 10px rgba(255,100,128,.45) !important; }
+.sc-b .sc-val { color: #5aa8ff !important; text-shadow: 0 0 10px rgba(90,168,255,.55) !important; }
+.sc-a .sc-val { color: #ffc24a !important; text-shadow: 0 0 10px rgba(255,194,74,.45) !important; }
+
+.wbar-wrap { background: rgba(8,12,22,.6) !important; border-bottom: 1px solid rgba(90,168,255,.10) !important; }
+.wbar { height: 4px !important; background: rgba(255,255,255,.05) !important; border-radius: 4px !important; overflow: hidden; }
+.wbar-g { background: linear-gradient(90deg, #2ee69c, #22f3ff) !important; box-shadow: 0 0 8px rgba(46,230,156,.5); }
+.wbar-r { background: linear-gradient(90deg, #ff6480, #8b6cff) !important; box-shadow: 0 0 8px rgba(255,100,128,.4); }
+
+.trades-hdr-row {
+  background: linear-gradient(180deg, rgba(16,26,46,.7), rgba(10,15,28,.4)) !important;
+  border-bottom: 1px solid rgba(90,168,255,.18) !important;
+  letter-spacing: 3px !important;
+  color: rgba(34,243,255,.5) !important;
+}
+.th-cols {
+  background: rgba(10,15,28,.5) !important;
+  border-bottom: 1px solid rgba(90,168,255,.12) !important;
+  letter-spacing: 1.6px !important;
+  color: rgba(120,180,255,.5) !important;
+}
+.tr-row {
+  border-bottom: 1px solid rgba(90,168,255,.05) !important;
+  transition: all .18s !important;
+}
+.tr-row:hover {
+  background: rgba(34,243,255,.05) !important;
+  transform: translateX(2px);
+}
+.tr-row.tw { border-left: 2px solid #2ee69c !important; box-shadow: inset 2px 0 8px rgba(46,230,156,.1); }
+.tr-row.tl { border-left: 2px solid #ff6480 !important; box-shadow: inset 2px 0 8px rgba(255,100,128,.08); }
+.tx-g { color: #2ee69c !important; text-shadow: 0 0 6px rgba(46,230,156,.35); }
+.tx-r { color: #ff6480 !important; text-shadow: 0 0 6px rgba(255,100,128,.3); }
+.obs-cell:hover { color: var(--cyan) !important; }
+
+/* ── C3 DECISION ANALYSIS ──────────────────── */
+.dae-decision {
+  background: radial-gradient(ellipse 100% 80% at 50% 0%, rgba(34,243,255,.06), transparent 80%) !important;
+  border-bottom: 1px solid rgba(90,168,255,.14) !important;
+}
+.dae-verdict-main { letter-spacing: 1.5px !important; }
+.dv-aplus  { color: #2ee69c !important; text-shadow: 0 0 22px rgba(46,230,156,.55), 0 0 50px rgba(46,230,156,.25) !important; animation: verdictPulse 3s ease-in-out infinite; }
+.dv-a      { color: #22f3ff !important; text-shadow: 0 0 18px rgba(34,243,255,.55), 0 0 44px rgba(34,243,255,.22) !important; }
+.dv-reduce { color: #ffc24a !important; text-shadow: 0 0 16px rgba(255,194,74,.5) !important; }
+.dv-no     { color: #ff6480 !important; text-shadow: 0 0 16px rgba(255,100,128,.55), 0 0 40px rgba(255,100,128,.25) !important; animation: verdictPulse 2s ease-in-out infinite; }
+@keyframes verdictPulse {
+  0%,100% { opacity: 1;   filter: brightness(1); }
+  50%     { opacity: .92; filter: brightness(1.18); }
+}
+.dae-conf-bar-track { background: rgba(255,255,255,.06) !important; height: 5px !important; border-radius: 4px !important; overflow: hidden; position: relative; }
+.dae-conf-bar-fill {
+  background: linear-gradient(90deg, #22f3ff, #8b6cff) !important;
+  box-shadow: 0 0 10px rgba(34,243,255,.5);
+  position: relative;
+}
+.dae-conf-bar-fill::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.45), transparent);
+  background-size: 50% 100%;
+  animation: shineSweep 2.6s linear infinite;
+  pointer-events: none;
+}
+@keyframes shineSweep {
+  from { background-position: -100% 0; }
+  to   { background-position:  200% 0; }
+}
+.dae-ctx-item {
+  background: rgba(16,26,46,.55) !important;
+  border: 1px solid rgba(90,168,255,.12) !important;
+  border-radius: 7px !important;
+  transition: all .22s !important;
+  -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+}
+.dae-ctx-item:hover { border-color: rgba(34,243,255,.4) !important; background: rgba(34,243,255,.05) !important; box-shadow: 0 0 16px rgba(34,243,255,.14); }
+.dctx-g .dae-ctx-val { color: #2ee69c !important; text-shadow: 0 0 8px rgba(46,230,156,.35); }
+.dctx-r .dae-ctx-val { color: #ff6480 !important; text-shadow: 0 0 8px rgba(255,100,128,.3); }
+.dctx-a .dae-ctx-val { color: #ffc24a !important; }
+.dctx-n .dae-ctx-val { color: var(--tx) !important; }
+
+.fbox { border-radius: 7px !important; transition: all .22s; }
+.fbox-favor  { background: rgba(46,230,156,.06) !important; border-color: rgba(46,230,156,.22) !important; }
+.fbox-contra { background: rgba(255,100,128,.06) !important; border-color: rgba(255,100,128,.22) !important; }
+.fbox-favor:hover  { box-shadow: 0 0 14px rgba(46,230,156,.18); border-color: rgba(46,230,156,.4) !important; }
+.fbox-contra:hover { box-shadow: 0 0 14px rgba(255,100,128,.18); border-color: rgba(255,100,128,.4) !important; }
+
+.action-box { border-radius: 8px !important; transition: all .25s; }
+.action-box.trade   { background: linear-gradient(135deg, rgba(46,230,156,.10), rgba(34,243,255,.06)) !important; border-color: rgba(46,230,156,.32) !important; box-shadow: 0 0 22px rgba(46,230,156,.18) !important; }
+.action-box.reduce  { background: linear-gradient(135deg, rgba(255,194,74,.10), rgba(255,100,128,.04)) !important; border-color: rgba(255,194,74,.32) !important; }
+.action-box.notrade { background: linear-gradient(135deg, rgba(255,100,128,.10), rgba(139,108,255,.06)) !important; border-color: rgba(255,100,128,.32) !important; }
+.action-box.wait    { background: linear-gradient(135deg, rgba(34,243,255,.10), rgba(139,108,255,.06)) !important; border-color: rgba(34,243,255,.32) !important; }
+.action-box.trade   .action-cmd { color: #2ee69c !important; text-shadow: 0 0 10px rgba(46,230,156,.4); }
+.action-box.reduce  .action-cmd { color: #ffc24a !important; text-shadow: 0 0 10px rgba(255,194,74,.4); }
+.action-box.notrade .action-cmd { color: #ff6480 !important; text-shadow: 0 0 10px rgba(255,100,128,.4); }
+.action-box.wait    .action-cmd { color: var(--cyan) !important; text-shadow: 0 0 10px rgba(34,243,255,.4); }
+
+.val-item {
+  background: rgba(16,26,46,.55) !important;
+  border: 1px solid rgba(90,168,255,.12) !important;
+  border-radius: 7px !important;
+  transition: all .22s;
+}
+.val-item:hover { border-color: rgba(34,243,255,.35) !important; background: rgba(34,243,255,.04) !important; box-shadow: 0 0 14px rgba(34,243,255,.12); }
+.vv-g .val-val { color: #2ee69c !important; text-shadow: 0 0 6px rgba(46,230,156,.3); }
+.vv-r .val-val { color: #ff6480 !important; }
+.vv-a .val-val { color: #ffc24a !important; }
+.vv-n .val-val { color: var(--tx) !important; }
+
+/* ── C4 GALLERY ─────────────────────────────── */
+.folder-card-big, .subfolder-card, .gcard {
+  background: linear-gradient(135deg, rgba(16,26,46,.82), rgba(10,15,28,.65)) !important;
+  border: 1px solid rgba(90,168,255,.14) !important;
+  border-radius: 9px !important;
+  position: relative; overflow: hidden;
+  transition: all .28s cubic-bezier(.2,.8,.2,1) !important;
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+}
+.folder-card-big:hover, .subfolder-card:hover, .gcard:hover {
+  border-color: rgba(34,243,255,.5) !important;
+  transform: translateY(-3px) !important;
+  box-shadow: 0 14px 38px rgba(0,0,0,.55), 0 0 26px rgba(34,243,255,.22) !important;
+  background: linear-gradient(135deg, rgba(34,243,255,.06), rgba(16,26,46,.85)) !important;
+}
+.folder-card-big.active-target, .subfolder-card.active-sub {
+  border-color: rgba(139,108,255,.55) !important;
+  background: linear-gradient(135deg, rgba(139,108,255,.10), rgba(34,243,255,.06)) !important;
+  box-shadow: 0 0 22px rgba(139,108,255,.28) !important;
+}
+.fcb-count, .sfc-count { color: var(--cyan) !important; text-shadow: 0 0 8px rgba(34,243,255,.5); }
+.sfc-icon { color: var(--violet) !important; }
+
+.back-btn {
+  background: rgba(34,243,255,.05) !important;
+  border: 1px solid rgba(34,243,255,.18) !important;
+  border-radius: 6px !important;
+  transition: all .22s !important;
+}
+.back-btn:hover { border-color: var(--cyan) !important; color: var(--cyan) !important; box-shadow: 0 0 14px rgba(34,243,255,.22); transform: translateX(-2px); }
+
+/* ── ENTRANCE ANIMATION ──────────────────── */
+@keyframes fadeRise {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+#hdr  { animation: fadeRise .55s ease both; }
+#mbar { animation: fadeRise .55s ease .08s both; }
+#c1   { animation: fadeRise .55s ease .14s both; }
+#c2   { animation: fadeRise .55s ease .20s both; }
+#c3   { animation: fadeRise .55s ease .26s both; }
+#c4   { animation: fadeRise .55s ease .32s both; }
+
+/* ── EMPTY STATES ─────────────────────────── */
+.empty-icon, .dae-empty-icon {
+  font-size: 30px;
+  background: linear-gradient(135deg, var(--cyan), var(--violet));
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent !important;
+  opacity: .55;
+  animation: emptyFloat 4s ease-in-out infinite;
+}
+@keyframes emptyFloat {
+  0%, 100% { transform: translateY(0);  opacity: .35; }
+  50%      { transform: translateY(-4px); opacity: .6; }
+}
+.empty-ttl, .dae-empty-title {
+  background: linear-gradient(90deg, var(--cyan), var(--violet));
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent !important;
+  letter-spacing: 3px !important;
+}
+
+/* ── SCROLLBAR ─────────────────────────── */
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, rgba(34,243,255,.35), rgba(139,108,255,.35)) !important;
+  border-radius: 3px !important;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, rgba(34,243,255,.6), rgba(139,108,255,.6)) !important;
+}
+
+/* ── SELECTION ─────────────────────────── */
+::selection { background: rgba(34,243,255,.3); color: #fff; text-shadow: 0 0 6px rgba(34,243,255,.4); }
+
+/* ── LIGHT MODE — CRYSTALLINE TECH ───────── */
+[data-theme="light"] {
+  --bg:     #eef3fa;
+  --s1:     #ffffff;
+  --s2:     #f5f8fc;
+  --s3:     #e8eef7;
+  --bd:     rgba(60,120,180,.18);
+  --bd2:    rgba(60,120,180,.28);
+  --tx:     #0c1a2e;
+  --t2:     #4a6280;
+  --t3:     #8aa2bd;
+}
+[data-theme="light"] html, [data-theme="light"] body { background: transparent !important; }
+[data-theme="light"] #cb-bg {
+  background:
+    radial-gradient(ellipse 70% 50% at 18% 12%, rgba(60,120,200,.14) 0%, transparent 55%),
+    radial-gradient(ellipse 60% 50% at 82% 88%, rgba(139,108,255,.10) 0%, transparent 55%),
+    linear-gradient(135deg, #f0f5fc 0%, #e3ecf8 50%, #d6e3f3 100%) !important;
+}
+[data-theme="light"] #cb-bg .cb-grid {
+  background-image:
+    linear-gradient(to right,  rgba(60,120,200,.10) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(60,120,200,.10) 1px, transparent 1px);
+}
+[data-theme="light"] #cb-bg .cb-aurora { opacity: .35; }
+[data-theme="light"] #cb-bg .cb-node { box-shadow: 0 0 8px rgba(60,120,200,.55), 0 0 18px rgba(34,150,255,.32) !important; }
+[data-theme="light"] #hdr {
+  background: linear-gradient(180deg, rgba(255,255,255,.92), rgba(245,248,252,.78)) !important;
+  border-bottom-color: rgba(60,120,180,.25) !important;
+  box-shadow: 0 0 24px rgba(60,120,200,.06), 0 1px 0 rgba(60,120,200,.18) !important;
+}
+[data-theme="light"] .h-logo  { background: linear-gradient(135deg, #0c1a2e 0%, #2563eb 50%, #8b5cf6 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+[data-theme="light"] .h-logo em { background: linear-gradient(135deg, #2563eb, #8b5cf6); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+[data-theme="light"] #h-clock { color: #2563eb !important; text-shadow: 0 0 8px rgba(37,99,235,.3) !important; background: rgba(37,99,235,.06) !important; border-color: rgba(37,99,235,.28) !important; box-shadow: inset 0 0 10px rgba(37,99,235,.06) !important; }
+[data-theme="light"] .h-btn   { background: linear-gradient(135deg, rgba(37,99,235,.06), rgba(139,92,246,.06)) !important; border-color: rgba(37,99,235,.22) !important; color: #4a6280 !important; }
+[data-theme="light"] .h-btn:hover { border-color: #2563eb !important; color: #2563eb !important; background: linear-gradient(135deg, rgba(37,99,235,.14), rgba(139,92,246,.14)) !important; box-shadow: 0 0 16px rgba(37,99,235,.2) !important; }
+[data-theme="light"] #mbar    { background: linear-gradient(180deg, rgba(255,255,255,.85), rgba(245,248,252,.65)) !important; border-bottom-color: rgba(60,120,180,.2) !important; box-shadow: 0 4px 18px rgba(60,120,200,.06) !important; }
+[data-theme="light"] .col     { background: linear-gradient(180deg, rgba(255,255,255,.55), rgba(245,248,252,.35)) !important; border-right-color: rgba(60,120,180,.18); }
+[data-theme="light"] .chdr    { background: linear-gradient(180deg, rgba(255,255,255,.85), rgba(245,248,252,.55)) !important; border-bottom-color: rgba(60,120,180,.22) !important; border-right-color: rgba(60,120,180,.12) !important; }
+[data-theme="light"] .chdr-title { background: linear-gradient(90deg, #2563eb, #8b5cf6); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+[data-theme="light"] .chdr-badge { color: #2563eb !important; background: rgba(37,99,235,.06); border-color: rgba(37,99,235,.22); text-shadow: none !important; }
+[data-theme="light"] .fsec-title { background: linear-gradient(90deg, #2563eb, #8b5cf6); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+[data-theme="light"] .frow select { background: rgba(255,255,255,.7) !important; border-color: rgba(60,120,180,.22) !important; color: #0c1a2e !important; }
+[data-theme="light"] .frow select:focus { border-color: #2563eb !important; box-shadow: 0 0 0 2px rgba(37,99,235,.14), 0 0 14px rgba(37,99,235,.18) !important; background: rgba(37,99,235,.05) !important; }
+[data-theme="light"] .frow select option { background: #fff !important; color: #0c1a2e !important; }
+[data-theme="light"] #run-btn { background: linear-gradient(135deg, #2563eb 0%, #8b5cf6 50%, #06b6d4 100%) !important; background-size: 200% 100% !important; box-shadow: 0 4px 18px rgba(37,99,235,.25), 0 0 24px rgba(139,92,246,.18) !important; }
+[data-theme="light"] #run-btn:hover { box-shadow: 0 8px 28px rgba(37,99,235,.4), 0 0 36px rgba(139,92,246,.3) !important; }
+[data-theme="light"] .scard,
+[data-theme="light"] .dae-ctx-item,
+[data-theme="light"] .val-item,
+[data-theme="light"] .folder-card-big,
+[data-theme="light"] .subfolder-card,
+[data-theme="light"] .gcard {
+  background: linear-gradient(135deg, rgba(255,255,255,.96), rgba(245,248,252,.82)) !important;
+  border-color: rgba(60,120,180,.20) !important;
+  box-shadow: 0 2px 14px rgba(60,120,200,.08) !important;
+}
+[data-theme="light"] .scard:hover,
+[data-theme="light"] .folder-card-big:hover,
+[data-theme="light"] .subfolder-card:hover,
+[data-theme="light"] .gcard:hover {
+  border-color: #2563eb !important;
+  box-shadow: 0 8px 26px rgba(37,99,235,.18), 0 0 0 1px rgba(37,99,235,.12) !important;
+  background: linear-gradient(135deg, rgba(255,255,255,1), rgba(240,246,253,.95)) !important;
+}
+[data-theme="light"] .scard::before, [data-theme="light"] .scard::after { border-color: #2563eb; }
+[data-theme="light"] .tr-row { border-bottom-color: rgba(60,120,180,.10) !important; }
+[data-theme="light"] .tr-row:hover { background: rgba(37,99,235,.04) !important; }
+[data-theme="light"] .trades-hdr-row { background: linear-gradient(180deg, rgba(245,248,252,.85), rgba(232,238,247,.65)) !important; color: #2563eb !important; border-bottom-color: rgba(60,120,180,.22) !important; }
+[data-theme="light"] .th-cols { background: rgba(245,248,252,.6) !important; color: #4a6280 !important; border-bottom-color: rgba(60,120,180,.18) !important; }
+[data-theme="light"] .tx-g, [data-theme="light"] .sc-g .sc-val, [data-theme="light"] .m-g .mbar-val,
+[data-theme="light"] .dctx-g .dae-ctx-val, [data-theme="light"] .vv-g .val-val,
+[data-theme="light"] .dv-aplus { color: #15803d !important; text-shadow: none !important; animation: none !important; }
+[data-theme="light"] .tx-r, [data-theme="light"] .sc-r .sc-val, [data-theme="light"] .m-r .mbar-val,
+[data-theme="light"] .dctx-r .dae-ctx-val, [data-theme="light"] .vv-r .val-val,
+[data-theme="light"] .dv-no { color: #b91c1c !important; text-shadow: none !important; animation: none !important; }
+[data-theme="light"] .sc-b .sc-val, [data-theme="light"] .m-b .mbar-val,
+[data-theme="light"] .dv-a { color: #2563eb !important; text-shadow: none !important; }
+[data-theme="light"] .sc-a .sc-val, [data-theme="light"] .m-a .mbar-val,
+[data-theme="light"] .dctx-a .dae-ctx-val, [data-theme="light"] .vv-a .val-val,
+[data-theme="light"] .dv-reduce { color: #b45309 !important; text-shadow: none !important; }
+[data-theme="light"] .empty-icon, [data-theme="light"] .dae-empty-icon,
+[data-theme="light"] .empty-ttl, [data-theme="light"] .dae-empty-title { background: linear-gradient(135deg, #2563eb, #8b5cf6); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+[data-theme="light"] ::-webkit-scrollbar-thumb { background: linear-gradient(180deg, rgba(37,99,235,.35), rgba(139,92,246,.35)) !important; }
+
+/* ── REDUCED MOTION ───────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .1s !important;
+  }
+  #cb-bg .cb-node { animation: none !important; opacity: .8; }
+  #cb-bg .cb-aurora,
+  #cb-bg .cb-line { animation: none !important; }
+  #hdr::after, #mbar::after, .dae-conf-bar-fill::after { animation: none !important; }
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   FLUID LAYOUT v11 — Borderless · Composición por espaciado
+   Quita todas las líneas divisorias y separa por padding + contraste.
+   ════════════════════════════════════════════════════════════════════ */
+
+/* ── PURGAR BORDES DIVISORIOS RÍGIDOS ──────────────── */
+#hdr,
+#mbar,
+.col, .cbody, .chdr,
+.fsec, .fsec-title,
+.scards, .wbar-wrap,
+.trades-hdr-row, .th-cols, .tr-row,
+.dae-decision, .dae-ctx, .dae-factors, .dae-action, .dae-missing, .dae-validation,
+#dyn-img-bar, #dyn-rr-bar, #gal-ctx-bar {
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Pero mantenemos los acentos animados (líneas decorativas, no divisorias) */
+#hdr {
+  border-bottom: 1px solid rgba(34,243,255,.08) !important;
+}
+
+/* ── HEADER — más aire ──────────────────────────────── */
+#hdr { padding: 0 22px !important; height: 52px !important; }
+
+/* ── METRICS BAR — KPI flotantes sin tabla ──────────── */
+#mbar {
+  height: 72px !important;
+  padding: 10px 16px !important;
+  gap: 8px !important;
+  display: flex !important;
+  align-items: stretch !important;
+}
+#mbar::after { display: none !important; }
+.mbar-item {
+  border: none !important;
+  background: linear-gradient(135deg, rgba(16,26,46,.45), rgba(10,15,28,.25)) !important;
+  border-radius: 10px !important;
+  padding: 8px 18px !important;
+  min-width: 92px !important;
+  flex: 1 1 0 !important;
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  transition: background .25s ease, transform .25s ease !important;
+}
+.mbar-item::before { display: none !important; }
+.mbar-item:hover {
+  background: linear-gradient(135deg, rgba(34,243,255,.08), rgba(16,26,46,.55)) !important;
+  transform: translateY(-1px);
+}
+.mbar-lbl { color: rgba(120,180,255,.5) !important; margin-bottom: 5px !important; letter-spacing: 2.2px !important; }
+.mbar-alerts {
+  background: linear-gradient(135deg, rgba(16,26,46,.4), rgba(10,15,28,.2)) !important;
+  border-radius: 10px;
+  padding: 6px 14px !important;
+  flex: 2 1 0 !important;
+}
+.malert { border-radius: 6px !important; padding: 3px 10px !important; }
+
+/* ── MAIN — separación entre columnas por gap ─────── */
+#main {
+  padding: 14px 14px 0 !important;
+  gap: 14px !important;
+  background: transparent !important;
+}
+.col {
+  border: none !important;
+  background: transparent !important;
+  border-radius: 14px;
+  overflow: hidden;
+}
+.cbody {
+  border: none !important;
+  padding: 0 !important;
+}
+
+/* ── COLUMN HEADER — sin línea, solo aire ─────────── */
+.chdr {
+  height: auto !important;
+  background: transparent !important;
+  border: none !important;
+  padding: 4px 4px 14px !important;
+  margin-bottom: 4px;
+}
+
+/* ── C1 CHECKLIST — secciones por espacio ─────────── */
+.cbody { padding: 6px !important; }
+.fsec {
+  background: linear-gradient(135deg, rgba(16,26,46,.5), rgba(10,15,28,.32)) !important;
+  border: none !important;
+  border-radius: 12px !important;
+  padding: 14px 16px !important;
+  margin-bottom: 10px !important;
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+}
+.fsec-title {
+  border: none !important;
+  padding-bottom: 0 !important;
+  margin-bottom: 12px !important;
+  letter-spacing: 3px !important;
+}
+.frow { margin-bottom: 9px !important; }
+.frow:last-child { margin-bottom: 0 !important; }
+.frow label { margin-bottom: 5px !important; }
+.frow select { padding: 7px 10px !important; }
+.c1-btns { padding: 4px 0 8px !important; gap: 8px !important; }
+#run-btn  { padding: 12px !important; }
+#clr-btn  { padding: 9px !important; border-radius: 8px !important; }
+
+/* ── C2 STATS + TRADES — todo flotante ────────────── */
+.scards {
+  display: grid !important;
+  grid-template-columns: repeat(2,1fr) !important;
+  gap: 8px !important;
+  padding: 4px !important;
+  background: transparent !important;
+  margin-bottom: 12px;
+}
+.scard {
+  border: none !important;
+  background: linear-gradient(135deg, rgba(16,26,46,.6), rgba(10,15,28,.4)) !important;
+  border-radius: 10px !important;
+  padding: 14px 16px !important;
+  box-shadow: 0 2px 12px rgba(0,0,0,.25) !important;
+}
+.scard:hover {
+  background: linear-gradient(135deg, rgba(34,243,255,.07), rgba(16,26,46,.7)) !important;
+  box-shadow: 0 8px 24px rgba(0,0,0,.45), 0 0 0 1px rgba(34,243,255,.18) !important;
+}
+
+.wbar-wrap {
+  background: linear-gradient(135deg, rgba(16,26,46,.5), rgba(10,15,28,.3)) !important;
+  border: none !important;
+  border-radius: 10px !important;
+  padding: 10px 14px !important;
+  margin: 4px 4px 12px !important;
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+}
+
+/* Trades — sin tabla, lista respirada */
+.trades-hdr-row {
+  background: transparent !important;
+  border: none !important;
+  padding: 4px 14px 8px !important;
+  letter-spacing: 3px !important;
+  color: rgba(120,180,255,.55) !important;
+}
+.th-cols {
+  background: transparent !important;
+  border: none !important;
+  padding: 6px 14px !important;
+  color: rgba(120,180,255,.4) !important;
+}
+.tr-row {
+  border: none !important;
+  border-radius: 8px !important;
+  padding: 9px 14px !important;
+  margin: 2px 4px !important;
+  background: rgba(16,26,46,.32) !important;
+  transition: all .2s ease !important;
+}
+.tr-row:nth-child(even) { background: rgba(10,15,28,.32) !important; }
+.tr-row:hover {
+  background: linear-gradient(90deg, rgba(34,243,255,.08), rgba(16,26,46,.5)) !important;
+  transform: translateX(3px);
+  box-shadow: 0 2px 10px rgba(0,0,0,.25), inset 2px 0 0 rgba(34,243,255,.4) !important;
+}
+.tr-row.tw, .tr-row.tl { border-left: none !important; box-shadow: none !important; }
+.tr-row.tw { background: linear-gradient(90deg, rgba(46,230,156,.07), rgba(16,26,46,.32)) !important; }
+.tr-row.tl { background: linear-gradient(90deg, rgba(255,100,128,.06), rgba(16,26,46,.32)) !important; }
+.tr-row.tw:hover { background: linear-gradient(90deg, rgba(46,230,156,.14), rgba(16,26,46,.5)) !important; box-shadow: 0 2px 10px rgba(0,0,0,.25), inset 2px 0 0 rgba(46,230,156,.55) !important; }
+.tr-row.tl:hover { background: linear-gradient(90deg, rgba(255,100,128,.12), rgba(16,26,46,.5)) !important; box-shadow: 0 2px 10px rgba(0,0,0,.25), inset 2px 0 0 rgba(255,100,128,.55) !important; }
+
+/* ── C3 DECISION — bloques con aire ──────────────── */
+.dae-decision, .dae-factors, .dae-action, .dae-missing, .dae-validation {
+  border: none !important;
+  background: linear-gradient(135deg, rgba(16,26,46,.5), rgba(10,15,28,.3)) !important;
+  border-radius: 12px !important;
+  padding: 16px 18px !important;
+  margin: 0 6px 10px !important;
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+}
+.dae-decision {
+  background: radial-gradient(ellipse 100% 80% at 50% 0%, rgba(34,243,255,.08), rgba(16,26,46,.5) 80%) !important;
+  margin-top: 6px !important;
+}
+.dae-ctx {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 8px !important;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 6px !important;
+  margin-bottom: 10px;
+}
+.dae-ctx-item {
+  margin: 0 !important;
+  padding: 11px 13px !important;
+}
+.dae-factors-grid { gap: 8px !important; }
+.fbox { padding: 10px 12px !important; }
+.dae-val-grid { gap: 6px !important; }
+.val-item { padding: 9px 12px !important; border: none !important; box-shadow: 0 0 0 1px rgba(90,168,255,.10) inset; }
+.val-item:hover { box-shadow: 0 0 0 1px rgba(34,243,255,.32) inset, 0 0 14px rgba(34,243,255,.12) !important; }
+.dae-sec-title { letter-spacing: 2.5px !important; margin-bottom: 9px !important; }
+
+/* ── C4 GALLERY — sin barras administrativas ─────── */
+#dyn-rr-bar, #dyn-img-bar {
+  background: transparent !important;
+  border: none !important;
+  padding: 6px 6px 8px !important;
+  margin-bottom: 4px;
+}
+.dyn-img-sel, #dyn-rr-sel { padding: 6px 10px !important; }
+
+#gal-ctx-bar {
+  background: linear-gradient(135deg, rgba(16,26,46,.5), rgba(10,15,28,.3)) !important;
+  border: none !important;
+  border-radius: 10px !important;
+  padding: 8px 14px !important;
+  margin: 0 6px 8px !important;
+  font-size: 9px !important;
+  color: rgba(120,180,255,.5) !important;
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+}
+
+#gal-browser { padding: 4px 6px !important; }
+.folder-root, .folder-level1 { gap: 8px !important; padding: 4px !important; }
+.folder-card-big { padding: 18px 18px !important; }
+.subfolder-card  { padding: 13px 14px !important; }
+.gal-grid        { gap: 8px !important; padding: 4px !important; }
+
+/* ── EMPTY STATES — más aire ─────────────── */
+.empty-st, .dae-empty {
+  padding: 60px 24px !important;
+  gap: 12px !important;
+}
+
+/* ── REMOVE BORDER FROM CARDS GENERICOS ──── */
+.scard, .dae-ctx-item, .val-item,
+.folder-card-big, .subfolder-card, .gcard {
+  border: none !important;
+}
+.scard, .dae-ctx-item, .val-item {
+  box-shadow: 0 2px 12px rgba(0,0,0,.22), inset 0 0 0 1px rgba(90,168,255,.08) !important;
+}
+.scard:hover { box-shadow: 0 8px 26px rgba(0,0,0,.4), inset 0 0 0 1px rgba(34,243,255,.28), 0 0 22px rgba(34,243,255,.12) !important; }
+.dae-ctx-item:hover, .val-item:hover { box-shadow: 0 4px 16px rgba(0,0,0,.3), inset 0 0 0 1px rgba(34,243,255,.32), 0 0 14px rgba(34,243,255,.14) !important; }
+.folder-card-big, .subfolder-card, .gcard { box-shadow: 0 4px 18px rgba(0,0,0,.32), inset 0 0 0 1px rgba(90,168,255,.10) !important; }
+.folder-card-big:hover, .subfolder-card:hover, .gcard:hover { box-shadow: 0 14px 38px rgba(0,0,0,.55), inset 0 0 0 1px rgba(34,243,255,.4), 0 0 26px rgba(34,243,255,.2) !important; }
+
+/* ── LIGHT MODE — same fluid treatment ───── */
+[data-theme="light"] .mbar-item { background: linear-gradient(135deg, rgba(255,255,255,.7), rgba(245,248,252,.5)) !important; }
+[data-theme="light"] .mbar-item:hover { background: linear-gradient(135deg, rgba(37,99,235,.08), rgba(255,255,255,.85)) !important; }
+[data-theme="light"] .mbar-alerts { background: linear-gradient(135deg, rgba(255,255,255,.65), rgba(245,248,252,.45)) !important; }
+[data-theme="light"] .fsec,
+[data-theme="light"] .dae-decision,
+[data-theme="light"] .dae-factors,
+[data-theme="light"] .dae-action,
+[data-theme="light"] .dae-missing,
+[data-theme="light"] .dae-validation,
+[data-theme="light"] .wbar-wrap,
+[data-theme="light"] #gal-ctx-bar { background: linear-gradient(135deg, rgba(255,255,255,.78), rgba(245,248,252,.55)) !important; }
+[data-theme="light"] .dae-decision { background: radial-gradient(ellipse 100% 80% at 50% 0%, rgba(37,99,235,.08), rgba(255,255,255,.7) 80%) !important; }
+[data-theme="light"] .scard, [data-theme="light"] .dae-ctx-item, [data-theme="light"] .val-item { box-shadow: 0 2px 12px rgba(60,120,200,.08), inset 0 0 0 1px rgba(60,120,180,.10) !important; }
+[data-theme="light"] .scard:hover { box-shadow: 0 8px 26px rgba(37,99,235,.18), inset 0 0 0 1px rgba(37,99,235,.3) !important; }
+[data-theme="light"] .tr-row { background: rgba(255,255,255,.45) !important; }
+[data-theme="light"] .tr-row:nth-child(even) { background: rgba(245,248,252,.5) !important; }
+[data-theme="light"] .tr-row:hover { background: linear-gradient(90deg, rgba(37,99,235,.08), rgba(255,255,255,.7)) !important; box-shadow: 0 2px 10px rgba(60,120,200,.12), inset 2px 0 0 rgba(37,99,235,.55) !important; }
+
+/* ════════════════════════════════════════════════════════════════════
+   FINAL CLEANUP v12 — Fondo liso · Títulos sin obstrucción
+   ════════════════════════════════════════════════════════════════════ */
+
+/* Quita la grilla cuadriculada y los nodos/líneas del circuit board */
+#cb-bg .cb-grid,
+#cb-bg .cb-lines,
+#cb-bg .cb-line,
+#cb-bg .cb-node { display: none !important; }
+#cb-bg .cb-node::after { display: none !important; }
+
+/* Mantener solo el aurora ambiental + gradientes radiales suaves */
+#cb-bg .cb-aurora { opacity: .35 !important; }
+
+/* Quita la barrita decorativa que tapaba la primera letra del título */
+.chdr::before { display: none !important; }
+.chdr-title  { padding-left: 4px !important; }
+
+/* Trade rows clickeables — cursor pointer */
+#trades-body .tr-row { cursor: pointer; }
+#trades-body .tr-row .obs-cell { cursor: pointer; }
+
+/* × remove button — invisible until hover */
+.frow .rm-btn { opacity: 0; transition: opacity .18s; }
+.frow:hover .rm-btn { opacity: 1; }
+
+/* ════════════════════════════════════════════════════════════════════
+   MAPPING MODAL — Configurar columnas
+   ════════════════════════════════════════════════════════════════════ */
+#map-modal {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,.7);
+  z-index: 9999;
+  align-items: center; justify-content: center;
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+}
+#map-modal.open { display: flex; animation: fadeRise .25s ease both; }
+#map-inner {
+  background: linear-gradient(135deg, rgba(12,20,36,.96), rgba(8,12,22,.92));
+  border: 1px solid rgba(34,243,255,.22);
+  border-radius: 14px;
+  padding: 22px 26px 18px;
+  width: 92%; max-width: 700px;
+  max-height: 88vh; overflow-y: auto;
+  position: relative;
+  box-shadow: 0 28px 80px rgba(0,0,0,.7), 0 0 40px rgba(34,243,255,.08);
+  -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
+}
+#map-close {
+  position: absolute; top: 12px; right: 14px;
+  background: transparent;
+  border: 1px solid rgba(120,180,255,.22);
+  color: rgba(120,180,255,.6);
+  font-size: 12px; font-weight: 700;
+  padding: 3px 10px; border-radius: 6px; cursor: pointer;
+  transition: all .15s;
+}
+#map-close:hover { border-color: var(--red2); color: var(--red2); }
+#map-title {
+  background: linear-gradient(90deg, var(--cyan), var(--violet));
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: transparent !important;
+  font-size: 14px; font-weight: 900;
+  letter-spacing: 2px; text-transform: uppercase;
+  margin-bottom: 6px;
+}
+#map-sub {
+  font-size: 11px; color: rgba(120,180,255,.65);
+  line-height: 1.6; margin-bottom: 18px;
+  font-weight: 500;
+}
+#map-sub b { color: var(--tx); font-weight: 700; }
+.map-section { margin-bottom: 18px; }
+.map-section-title {
+  font-size: 9px; font-weight: 900; letter-spacing: 3px;
+  text-transform: uppercase;
+  background: linear-gradient(90deg, var(--cyan), var(--violet));
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 6px;
+}
+.map-section-sub {
+  font-size: 10px; color: rgba(120,180,255,.5);
+  margin-bottom: 10px; font-weight: 500;
+}
+.map-grid { display: flex; flex-direction: column; gap: 8px; }
+.map-row {
+  display: grid;
+  grid-template-columns: 130px 1fr 160px;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 12px;
+  background: rgba(16,26,46,.5);
+  border-radius: 8px;
+  transition: background .18s;
+}
+.map-row:hover { background: rgba(34,243,255,.05); }
+.map-row label {
+  font-size: 10px; font-weight: 700;
+  color: var(--tx); letter-spacing: .5px;
+}
+.map-req { color: var(--red2); }
+.map-row select {
+  background: rgba(8,12,22,.7);
+  border: 1px solid rgba(90,168,255,.18);
+  color: var(--tx);
+  font-family: var(--mono);
+  font-size: 11px; font-weight: 600;
+  padding: 6px 10px; border-radius: 6px;
+  outline: none;
+  transition: all .18s;
+}
+.map-row select:focus { border-color: var(--cyan); box-shadow: 0 0 0 2px rgba(34,243,255,.18); }
+.map-row select option { background: #0c1424; color: var(--tx); }
+.map-hint {
+  font-size: 9px; color: rgba(120,180,255,.5);
+  font-weight: 500;
+}
+#map-filters-list {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  max-height: 200px; overflow-y: auto;
+  padding: 8px;
+  background: rgba(8,12,22,.5);
+  border-radius: 8px;
+}
+.map-fchip {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 10px;
+  background: rgba(16,26,46,.6);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all .15s;
+  user-select: none;
+}
+.map-fchip:hover { background: rgba(34,243,255,.07); }
+.map-fchip input { accent-color: var(--cyan); cursor: pointer; }
+.map-fchip span { font-size: 10px; font-weight: 600; color: var(--tx); flex: 1; }
+.map-fchip.active { background: rgba(34,243,255,.12); box-shadow: inset 0 0 0 1px rgba(34,243,255,.35); }
+.map-fchip-card { font-size: 8px; color: rgba(120,180,255,.5); font-family: var(--mono); }
+.map-actions {
+  display: flex; gap: 10px; justify-content: flex-end;
+  margin-top: 16px; padding-top: 14px;
+  border-top: 1px solid rgba(90,168,255,.10);
+}
+#map-auto, #map-save {
+  padding: 9px 18px;
+  border-radius: 8px;
+  font-family: var(--sans);
+  font-size: 11px; font-weight: 800;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: all .25s;
+}
+#map-auto {
+  background: rgba(34,243,255,.08);
+  border: 1px solid rgba(34,243,255,.22);
+  color: var(--cyan);
+}
+#map-auto:hover { background: rgba(34,243,255,.16); box-shadow: 0 0 16px rgba(34,243,255,.25); }
+#map-save {
+  background: linear-gradient(135deg, #3d7eff, #8b6cff);
+  border: 1px solid rgba(139,108,255,.4);
+  color: #fff;
+  box-shadow: 0 4px 18px rgba(90,168,255,.25);
+}
+#map-save:hover { box-shadow: 0 8px 28px rgba(139,108,255,.4); transform: translateY(-1px); }
+
+/* Dynamic filter list in C1 (auto-built from CSV) */
+#dyn-filters-section {
+  background: linear-gradient(135deg, rgba(16,26,46,.5), rgba(10,15,28,.32)) !important;
+  border-radius: 12px !important;
+  padding: 14px 16px !important;
+  margin-bottom: 10px !important;
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+}
+#dyn-filters-section .dyn-fsec-title {
+  background: linear-gradient(90deg, var(--cyan), var(--violet));
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-size: 7px; font-weight: 900; letter-spacing: 3px;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+#dyn-filters-section .dyn-fsec-config {
+  background: rgba(139,108,255,.12);
+  border: 1px solid rgba(139,108,255,.3);
+  color: var(--violet);
+  font-size: 8px; font-weight: 800; letter-spacing: .5px;
+  padding: 2px 8px; border-radius: 5px;
+  cursor: pointer;
+  transition: all .15s;
+}
+#dyn-filters-section .dyn-fsec-config:hover { background: rgba(139,108,255,.22); box-shadow: 0 0 10px rgba(139,108,255,.3); }
+#dyn-filters-empty {
+  text-align: center;
+  padding: 16px 8px;
+  color: rgba(120,180,255,.45);
+  font-size: 10px; font-weight: 600;
+  line-height: 1.6;
+}
+
 </style>
 </head>
 <body>
+
+<!-- ░░░ CIRCUIT BOARD BACKGROUND — GPU-only, sin JS ░░░ -->
+<div id="cb-bg" aria-hidden="true">
+  <div class="cb-grid"></div>
+  <div class="cb-aurora"></div>
+  <div class="cb-lines">
+    <span class="cb-line cb-l1"></span>
+    <span class="cb-line cb-l2"></span>
+    <span class="cb-line cb-l3"></span>
+    <span class="cb-line cb-l4"></span>
+  </div>
+  <span class="cb-node cb-n1"></span>
+  <span class="cb-node cb-n2"></span>
+  <span class="cb-node cb-n3"></span>
+  <span class="cb-node cb-n4"></span>
+  <span class="cb-node cb-n5"></span>
+  <span class="cb-node cb-n6"></span>
+  <span class="cb-node cb-n7"></span>
+  <span class="cb-node cb-n8"></span>
+</div>
 
 <!-- HIDDEN INPUTS (mantenido por compatibilidad con galería/diario) -->
 
@@ -1968,7 +3199,8 @@ html, body {
     ">✕</button>
   </div>
   <div id="gs-url-hint" style="font-size:9px;color:var(--t3);margin-top:6px;line-height:1.5;">
-    En Google Sheets: Archivo → Compartir → Publicar en la web → CSV → Copiar enlace
+    <b>Instrucciones:</b> En Google Sheets → Archivo → Compartir → Publicar en la web → Elegir "Valores separados por coma (.csv)" → Publicar → Copiar el enlace.<br>
+    También podés pegar cualquier URL de Google Sheets (edición, compartida, etc.) y se convierte automáticamente.
   </div>
 </div>
 
@@ -1976,9 +3208,12 @@ html, body {
 <div id="hdr">
   <div class="h-logo" id="h-logo-wrap" ondblclick="logoEdit()" title="Doble-click para editar">TRADER SANTIYQUE <em id="h-logo-em">PRE-MARKET</em></div>
   <div class="h-right">
-    <button class="h-btn" onclick="gsTogglePanel()"
-      style="border-color:rgba(96,165,250,.3);color:var(--blue2);">🔗 AGREGAR URL</button>
-    <span class="h-tag off" id="csv-tag">SIN DATOS</span>
+    <input type="file" id="csv-file-input" accept=".csv,text/csv,text/plain,text/tab-separated-values,application/vnd.ms-excel" onchange="csvFileLoad(event)">
+    <button class="h-btn" onclick="document.getElementById('csv-file-input').click()"
+      style="border-color:rgba(96,165,250,.3);color:var(--blue2);">📁 CARGAR CSV</button>
+    <button class="h-btn" id="map-btn" onclick="openMappingModal()" title="Configurar columnas del archivo"
+      style="border-color:rgba(139,108,255,.3);color:var(--violet);display:none;">⚙ COLUMNAS</button>
+    <span class="h-tag off" id="csv-tag" title="Click para ver detalles del archivo cargado">SIN DATOS</span>
     <button class="h-btn" id="csv-del-btn" onclick="deleteCSV()"
       style="display:none;border-color:rgba(239,68,68,.4);color:var(--red2);">✕</button>
     <button class="h-btn" style="border-color:rgba(34,197,94,.4);color:var(--green2);" id="edge-nav-btn" onclick="toggleEdgeView()">⚡ PRE-OPEN</button>
@@ -2034,10 +3269,23 @@ html, body {
     </div>
     <div class="cbody">
 
+      <!-- Dynamic auto-built filters from loaded CSV -->
+      <div id="dyn-filters-section" style="display:none;">
+        <div class="dyn-fsec-title">
+          <span>Filtros</span>
+          <button class="dyn-fsec-config" onclick="openMappingModal()">⚙ Configurar</button>
+        </div>
+        <div id="dyn-filters-list"></div>
+        <div id="dyn-filters-empty" style="display:none;">
+          Ningún filtro activo.<br>
+          Tocá <b>⚙ Configurar</b> para elegir columnas.
+        </div>
+      </div>
+
       <div class="fsec">
         <div class="fsec-title" style="display:flex;align-items:center;justify-content:space-between;"><span>Tiempo</span><button class="dyn-add-btn" id="dyn-btn-tiempo" style="display:none;" onclick="dynAddField('tiempo')">+ Agregar</button></div>
         <div class="frow">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;"><label style="margin-bottom:0;flex:1;">Día</label><button onclick="removeStaticFrow(this)" title="Eliminar campo" style="background:none;border:none;color:var(--t3);font-size:12px;font-weight:800;cursor:pointer;line-height:1;padding:0 2px;transition:color .12s;flex-shrink:0;" onmouseover="this.style.color='var(--red2)'" onmouseout="this.style.color='var(--t3)'">×</button></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;"><label style="margin-bottom:0;flex:1;">Día</label><button onclick="removeStaticFrow(this)" title="Eliminar campo" class="rm-btn" style="background:none;border:none;color:var(--t3);font-size:12px;font-weight:800;cursor:pointer;line-height:1;padding:0 2px;transition:color .12s;flex-shrink:0;" onmouseover="this.style.color='var(--red2)'" onmouseout="this.style.color='var(--t3)'">×</button></div>
           <select id="f-dia" onchange="onFC(this)">
             <option value="">— All —</option>
             <option value="lunes">Monday</option>
@@ -2048,7 +3296,7 @@ html, body {
           </select>
         </div>
         <div class="frow">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;"><label style="margin-bottom:0;flex:1;">Mes</label><button onclick="removeStaticFrow(this)" title="Eliminar campo" style="background:none;border:none;color:var(--t3);font-size:12px;font-weight:800;cursor:pointer;line-height:1;padding:0 2px;transition:color .12s;flex-shrink:0;" onmouseover="this.style.color='var(--red2)'" onmouseout="this.style.color='var(--t3)'">×</button></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;"><label style="margin-bottom:0;flex:1;">Mes</label><button onclick="removeStaticFrow(this)" title="Eliminar campo" class="rm-btn" style="background:none;border:none;color:var(--t3);font-size:12px;font-weight:800;cursor:pointer;line-height:1;padding:0 2px;transition:color .12s;flex-shrink:0;" onmouseover="this.style.color='var(--red2)'" onmouseout="this.style.color='var(--t3)'">×</button></div>
           <select id="f-mes" onchange="onFC(this)">
             <option value="">— Todos —</option>
             <option value="1">Enero</option>
@@ -2066,7 +3314,7 @@ html, body {
           </select>
         </div>
         <div class="frow">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;"><label style="margin-bottom:0;flex:1;">Semana</label><button onclick="removeStaticFrow(this)" title="Eliminar campo" style="background:none;border:none;color:var(--t3);font-size:12px;font-weight:800;cursor:pointer;line-height:1;padding:0 2px;transition:color .12s;flex-shrink:0;" onmouseover="this.style.color='var(--red2)'" onmouseout="this.style.color='var(--t3)'">×</button></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;"><label style="margin-bottom:0;flex:1;">Semana</label><button onclick="removeStaticFrow(this)" title="Eliminar campo" class="rm-btn" style="background:none;border:none;color:var(--t3);font-size:12px;font-weight:800;cursor:pointer;line-height:1;padding:0 2px;transition:color .12s;flex-shrink:0;" onmouseover="this.style.color='var(--red2)'" onmouseout="this.style.color='var(--t3)'">×</button></div>
           <select id="f-semana" onchange="onFC(this)">
             <option value="">— Todas —</option>
             <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
@@ -2078,23 +3326,23 @@ html, body {
       <div class="fsec">
         <div class="fsec-title" style="display:flex;align-items:center;justify-content:space-between;"><span>Contexto</span><button class="dyn-add-btn" id="dyn-btn-contexto" style="display:none;" onclick="dynAddField('contexto')">+ Agregar</button></div>
         <div class="frow">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;"><label style="margin-bottom:0;flex:1;">Bias</label><button onclick="removeStaticFrow(this)" title="Eliminar campo" style="background:none;border:none;color:var(--t3);font-size:12px;font-weight:800;cursor:pointer;line-height:1;padding:0 2px;transition:color .12s;flex-shrink:0;" onmouseover="this.style.color='var(--red2)'" onmouseout="this.style.color='var(--t3)'">×</button></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;"><label style="margin-bottom:0;flex:1;">Bias</label><button onclick="removeStaticFrow(this)" title="Eliminar campo" class="rm-btn" style="background:none;border:none;color:var(--t3);font-size:12px;font-weight:800;cursor:pointer;line-height:1;padding:0 2px;transition:color .12s;flex-shrink:0;" onmouseover="this.style.color='var(--red2)'" onmouseout="this.style.color='var(--t3)'">×</button></div>
           <select id="f-bias" onchange="onFC(this)"><option value="">— Todos —</option></select>
         </div>
         <div class="frow">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;"><label style="margin-bottom:0;flex:1;">WO</label><button onclick="removeStaticFrow(this)" title="Eliminar campo" style="background:none;border:none;color:var(--t3);font-size:12px;font-weight:800;cursor:pointer;line-height:1;padding:0 2px;transition:color .12s;flex-shrink:0;" onmouseover="this.style.color='var(--red2)'" onmouseout="this.style.color='var(--t3)'">×</button></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;"><label style="margin-bottom:0;flex:1;">WO</label><button onclick="removeStaticFrow(this)" title="Eliminar campo" class="rm-btn" style="background:none;border:none;color:var(--t3);font-size:12px;font-weight:800;cursor:pointer;line-height:1;padding:0 2px;transition:color .12s;flex-shrink:0;" onmouseover="this.style.color='var(--red2)'" onmouseout="this.style.color='var(--t3)'">×</button></div>
           <select id="f-wo" onchange="onFC(this)"><option value="">— Todos —</option></select>
         </div>
         <div class="frow">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;"><label style="margin-bottom:0;flex:1;">ES Pre-Open LT</label><button onclick="removeStaticFrow(this)" title="Eliminar campo" style="background:none;border:none;color:var(--t3);font-size:12px;font-weight:800;cursor:pointer;line-height:1;padding:0 2px;transition:color .12s;flex-shrink:0;" onmouseover="this.style.color='var(--red2)'" onmouseout="this.style.color='var(--t3)'">×</button></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;"><label style="margin-bottom:0;flex:1;">ES Pre-Open LT</label><button onclick="removeStaticFrow(this)" title="Eliminar campo" class="rm-btn" style="background:none;border:none;color:var(--t3);font-size:12px;font-weight:800;cursor:pointer;line-height:1;padding:0 2px;transition:color .12s;flex-shrink:0;" onmouseover="this.style.color='var(--red2)'" onmouseout="this.style.color='var(--t3)'">×</button></div>
           <select id="f-es" onchange="onFC(this)"><option value="">— Todos —</option></select>
         </div>
         <div class="frow">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;"><label style="margin-bottom:0;flex:1;">Rango AS / LN</label><button onclick="removeStaticFrow(this)" title="Eliminar campo" style="background:none;border:none;color:var(--t3);font-size:12px;font-weight:800;cursor:pointer;line-height:1;padding:0 2px;transition:color .12s;flex-shrink:0;" onmouseover="this.style.color='var(--red2)'" onmouseout="this.style.color='var(--t3)'">×</button></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;"><label style="margin-bottom:0;flex:1;">Rango AS / LN</label><button onclick="removeStaticFrow(this)" title="Eliminar campo" class="rm-btn" style="background:none;border:none;color:var(--t3);font-size:12px;font-weight:800;cursor:pointer;line-height:1;padding:0 2px;transition:color .12s;flex-shrink:0;" onmouseover="this.style.color='var(--red2)'" onmouseout="this.style.color='var(--t3)'">×</button></div>
           <select id="f-rango" onchange="onFC(this)"><option value="">— Todos —</option></select>
         </div>
         <div class="frow">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;"><label style="margin-bottom:0;flex:1;">Target</label><button onclick="removeStaticFrow(this)" title="Eliminar campo" style="background:none;border:none;color:var(--t3);font-size:12px;font-weight:800;cursor:pointer;line-height:1;padding:0 2px;transition:color .12s;flex-shrink:0;" onmouseover="this.style.color='var(--red2)'" onmouseout="this.style.color='var(--t3)'">×</button></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;"><label style="margin-bottom:0;flex:1;">Target</label><button onclick="removeStaticFrow(this)" title="Eliminar campo" class="rm-btn" style="background:none;border:none;color:var(--t3);font-size:12px;font-weight:800;cursor:pointer;line-height:1;padding:0 2px;transition:color .12s;flex-shrink:0;" onmouseover="this.style.color='var(--red2)'" onmouseout="this.style.color='var(--t3)'">×</button></div>
           <select id="f-target" onchange="onFC(this)">
             <option value="">— Todos —</option>
             <option value="AS">AS</option>
@@ -2107,19 +3355,19 @@ html, body {
       <div class="fsec">
         <div class="fsec-title" style="display:flex;align-items:center;justify-content:space-between;"><span>Setup</span><button class="dyn-add-btn" id="dyn-btn-setup" style="display:none;" onclick="dynAddField('setup')">+ Agregar</button></div>
         <div class="frow">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;"><label style="margin-bottom:0;flex:1;">PDA</label><button onclick="removeStaticFrow(this)" title="Eliminar campo" style="background:none;border:none;color:var(--t3);font-size:12px;font-weight:800;cursor:pointer;line-height:1;padding:0 2px;transition:color .12s;flex-shrink:0;" onmouseover="this.style.color='var(--red2)'" onmouseout="this.style.color='var(--t3)'">×</button></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;"><label style="margin-bottom:0;flex:1;">PDA</label><button onclick="removeStaticFrow(this)" title="Eliminar campo" class="rm-btn" style="background:none;border:none;color:var(--t3);font-size:12px;font-weight:800;cursor:pointer;line-height:1;padding:0 2px;transition:color .12s;flex-shrink:0;" onmouseover="this.style.color='var(--red2)'" onmouseout="this.style.color='var(--t3)'">×</button></div>
           <select id="f-pda" onchange="onFC(this)"><option value="">— Todos —</option></select>
         </div>
         <div class="frow">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;"><label style="margin-bottom:0;flex:1;">ERL / IRL</label><button onclick="removeStaticFrow(this)" title="Eliminar campo" style="background:none;border:none;color:var(--t3);font-size:12px;font-weight:800;cursor:pointer;line-height:1;padding:0 2px;transition:color .12s;flex-shrink:0;" onmouseover="this.style.color='var(--red2)'" onmouseout="this.style.color='var(--t3)'">×</button></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;"><label style="margin-bottom:0;flex:1;">ERL / IRL</label><button onclick="removeStaticFrow(this)" title="Eliminar campo" class="rm-btn" style="background:none;border:none;color:var(--t3);font-size:12px;font-weight:800;cursor:pointer;line-height:1;padding:0 2px;transition:color .12s;flex-shrink:0;" onmouseover="this.style.color='var(--red2)'" onmouseout="this.style.color='var(--t3)'">×</button></div>
           <select id="f-erl" onchange="onFC(this)"><option value="">— Todos —</option></select>
         </div>
         <div class="frow">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;"><label style="margin-bottom:0;flex:1;">STDV</label><button onclick="removeStaticFrow(this)" title="Eliminar campo" style="background:none;border:none;color:var(--t3);font-size:12px;font-weight:800;cursor:pointer;line-height:1;padding:0 2px;transition:color .12s;flex-shrink:0;" onmouseover="this.style.color='var(--red2)'" onmouseout="this.style.color='var(--t3)'">×</button></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;"><label style="margin-bottom:0;flex:1;">STDV</label><button onclick="removeStaticFrow(this)" title="Eliminar campo" class="rm-btn" style="background:none;border:none;color:var(--t3);font-size:12px;font-weight:800;cursor:pointer;line-height:1;padding:0 2px;transition:color .12s;flex-shrink:0;" onmouseover="this.style.color='var(--red2)'" onmouseout="this.style.color='var(--t3)'">×</button></div>
           <select id="f-stdv" onchange="onFC(this)"><option value="">— Todos —</option></select>
         </div>
         <div class="frow">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;"><label style="margin-bottom:0;flex:1;">Tipo MMXM</label><button onclick="removeStaticFrow(this)" title="Eliminar campo" style="background:none;border:none;color:var(--t3);font-size:12px;font-weight:800;cursor:pointer;line-height:1;padding:0 2px;transition:color .12s;flex-shrink:0;" onmouseover="this.style.color='var(--red2)'" onmouseout="this.style.color='var(--t3)'">×</button></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;"><label style="margin-bottom:0;flex:1;">Tipo MMXM</label><button onclick="removeStaticFrow(this)" title="Eliminar campo" class="rm-btn" style="background:none;border:none;color:var(--t3);font-size:12px;font-weight:800;cursor:pointer;line-height:1;padding:0 2px;transition:color .12s;flex-shrink:0;" onmouseover="this.style.color='var(--red2)'" onmouseout="this.style.color='var(--t3)'">×</button></div>
           <select id="f-mmxm" onchange="onFC(this)">
             <option value="">— Todos —</option>
             <option value="MMBM">MMBM</option>
@@ -2128,11 +3376,11 @@ html, body {
           </select>
         </div>
         <div class="frow">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;"><label style="margin-bottom:0;flex:1;">Liquidez OC</label><button onclick="removeStaticFrow(this)" title="Eliminar campo" style="background:none;border:none;color:var(--t3);font-size:12px;font-weight:800;cursor:pointer;line-height:1;padding:0 2px;transition:color .12s;flex-shrink:0;" onmouseover="this.style.color='var(--red2)'" onmouseout="this.style.color='var(--t3)'">×</button></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;"><label style="margin-bottom:0;flex:1;">Liquidez OC</label><button onclick="removeStaticFrow(this)" title="Eliminar campo" class="rm-btn" style="background:none;border:none;color:var(--t3);font-size:12px;font-weight:800;cursor:pointer;line-height:1;padding:0 2px;transition:color .12s;flex-shrink:0;" onmouseover="this.style.color='var(--red2)'" onmouseout="this.style.color='var(--t3)'">×</button></div>
           <select id="f-liq" onchange="onFC(this)"><option value="">— Todos —</option></select>
         </div>
         <div class="frow">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;"><label style="margin-bottom:0;flex:1;">SMT OPEN</label><button onclick="removeStaticFrow(this)" title="Eliminar campo" style="background:none;border:none;color:var(--t3);font-size:12px;font-weight:800;cursor:pointer;line-height:1;padding:0 2px;transition:color .12s;flex-shrink:0;" onmouseover="this.style.color='var(--red2)'" onmouseout="this.style.color='var(--t3)'">×</button></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;"><label style="margin-bottom:0;flex:1;">SMT OPEN</label><button onclick="removeStaticFrow(this)" title="Eliminar campo" class="rm-btn" style="background:none;border:none;color:var(--t3);font-size:12px;font-weight:800;cursor:pointer;line-height:1;padding:0 2px;transition:color .12s;flex-shrink:0;" onmouseover="this.style.color='var(--red2)'" onmouseout="this.style.color='var(--t3)'">×</button></div>
           <select id="f-smt" onchange="onFC(this)">
             <option value="">— Todos —</option>
             <option>SI</option><option>NO</option>
@@ -2262,6 +3510,37 @@ html, body {
     <div id="ef-view-diario"       class="ef-view"></div>
   </div>
 
+</div>
+
+<!-- MAPPING MODAL — Configurar roles de columnas y filtros del checklist -->
+<div id="map-modal" onclick="if(event.target===this)closeMappingModal()">
+  <div id="map-inner">
+    <button id="map-close" onclick="closeMappingModal()">✕</button>
+    <div id="map-title">Configurar columnas del archivo</div>
+    <div id="map-sub">Asigná cada rol a una columna del CSV. Lo importante: <b>Resultado</b> y <b>RR/Retorno</b> son obligatorios para que la app calcule estadísticas.</div>
+
+    <div class="map-section">
+      <div class="map-section-title">Roles principales</div>
+      <div class="map-grid">
+        <div class="map-row"><label>Resultado <span class="map-req">*</span></label><select id="map-result"></select><span class="map-hint">Win / Loss / etc.</span></div>
+        <div class="map-row"><label>RR / Retorno <span class="map-req">*</span></label><select id="map-rr"></select><span class="map-hint">Numérico (1.5, -1, +2.3)</span></div>
+        <div class="map-row"><label>Fecha</label><select id="map-date"></select><span class="map-hint">Opcional</span></div>
+        <div class="map-row"><label>Imagen (URL)</label><select id="map-image"></select><span class="map-hint">Link a la captura</span></div>
+        <div class="map-row"><label>Observación</label><select id="map-obs"></select><span class="map-hint">Texto libre / notas</span></div>
+      </div>
+    </div>
+
+    <div class="map-section">
+      <div class="map-section-title">Filtros del checklist</div>
+      <div class="map-section-sub">Marcá las columnas que querés usar como filtros en el panel izquierdo. Auto-detectamos las que parecen categóricas.</div>
+      <div id="map-filters-list"></div>
+    </div>
+
+    <div class="map-actions">
+      <button id="map-auto" onclick="mappingAutoFill()">🔄 Auto-detectar todo</button>
+      <button id="map-save" onclick="mappingSaveAndApply()">✓ Aplicar y guardar</button>
+    </div>
+  </div>
 </div>
 
 <!-- OBS MODAL -->
@@ -2458,6 +3737,121 @@ let _gsUrl        = '';
 let _gsLastHash   = '';
 let _gsInterval   = null;
 
+// ══════════════════════════════════════════════
+//  CARGA DE ARCHIVO CSV LOCAL — adaptable a cualquier formato
+// ══════════════════════════════════════════════
+function csvFileLoad(ev){
+  const f = ev.target.files && ev.target.files[0];
+  if(!f) return;
+
+  const tag = document.getElementById('csv-tag');
+  if(tag){ tag.textContent = '⏳ Leyendo archivo…'; tag.className = 'h-tag off'; }
+
+  const reader = new FileReader();
+  reader.onload = async function(e){
+    try {
+      const text = e.target.result || '';
+      if(!text.trim()){
+        if(tag){ tag.textContent = '⚠ Archivo vacío'; tag.className = 'h-tag off'; }
+        return;
+      }
+
+      // Detener cualquier auto-refresh de Google Sheets que estuviera activo
+      if(typeof _gsInterval !== 'undefined' && _gsInterval){
+        clearInterval(_gsInterval); _gsInterval = null;
+      }
+      if(typeof _gsUrl !== 'undefined') _gsUrl = '';
+      try { localStorage.removeItem('gs_sheet_url'); } catch(_){}
+
+      const parsed = parseCSV(text);
+      if(!parsed || !parsed.length){
+        if(tag){ tag.textContent = '⚠ CSV inválido o vacío'; tag.className = 'h-tag off'; }
+        return;
+      }
+
+      // Pipeline existente — el column resolver ya hace fuzzy matching sobre cualquier header
+      csvData = parsed;
+      refreshDynamicCols();
+
+      // UI header
+      if(tag){
+        tag.textContent = csvData.length + ' TRADES · ' + (f.name || 'archivo');
+        tag.className   = 'h-tag ok';
+        tag.title       = f.name + ' (' + (csvData[0] ? Object.keys(csvData[0]).length : 0) + ' columnas)';
+      }
+      const delBtn = document.getElementById('csv-del-btn');
+      if(delBtn) delBtn.style.display = 'inline-block';
+
+      // Persistir
+      try { await dbSaveTrades(csvData); } catch(_){}
+
+      // Re-render
+      populateDDs();
+      adaptFiltersToCSV();   // oculta filtros sin columna correspondiente en este CSV
+      dynReset();
+      runAnalysis();
+
+      console.log('[CSV] Cargado:', f.name, '·', csvData.length, 'filas ·', Object.keys(csvData[0]||{}).length, 'columnas');
+    } catch(err){
+      console.error('[CSV] Error:', err);
+      if(tag){ tag.textContent = '⚠ ' + (err.message || 'Error al leer archivo'); tag.className = 'h-tag off'; }
+    } finally {
+      // Reset input para permitir recargar el mismo archivo
+      ev.target.value = '';
+    }
+  };
+  reader.onerror = function(){
+    if(tag){ tag.textContent = '⚠ No se pudo leer el archivo'; tag.className = 'h-tag off'; }
+  };
+  reader.readAsText(f, 'UTF-8');
+}
+
+// ══════════════════════════════════════════════
+//  ADAPT CHECKLIST TO LOADED CSV
+//  Oculta cualquier filtro estático cuya columna canónica no se haya resuelto
+//  en los headers del CSV cargado. Permite que un CSV totalmente diferente
+//  no muestre dropdowns vacíos sin sentido. El usuario puede agregar filtros
+//  para columnas específicas con el botón "+ Agregar".
+// ══════════════════════════════════════════════
+function adaptFiltersToCSV(){
+  if(!csvData.length) return;
+
+  const headers = Object.keys(csvData[0] || {});
+  const headerSet = new Set(headers);
+
+  // Helper: ¿existe la columna canónica resuelta en los headers reales?
+  const hasCol = canonical => {
+    const resolved = (typeof colResolverCache !== 'undefined' && colResolverCache[canonical]) || null;
+    return !!(resolved && headerSet.has(resolved));
+  };
+
+  // Mapa filterId → canónico
+  const STATIC_MAP = {
+    'f-dia':'Dia', 'f-mes':'Mes', 'f-semana':'Semana',
+    'f-bias':'Bias', 'f-wo':'WO', 'f-es':'ES Pre-Open LT',
+    'f-rango':'Rango AS/LN', 'f-target':'Target',
+    'f-pda':'PDA', 'f-erl':'ERL/IRL', 'f-stdv':'STDV',
+    'f-mmxm':'Tipo MMXM', 'f-liq':'Liquidez OC', 'f-smt':'SMT OPEN',
+  };
+
+  Object.entries(STATIC_MAP).forEach(([id, canonical])=>{
+    const sel = document.getElementById(id);
+    if(!sel) return;
+    const frow = sel.closest('.frow');
+    if(!frow) return;
+    frow.style.display = hasCol(canonical) ? '' : 'none';
+  });
+
+  // Si toda una sección queda sin filtros visibles, ocultar el header de la sección también
+  document.querySelectorAll('#c1 .fsec').forEach(sec=>{
+    const visibleRows = [...sec.querySelectorAll('.frow')].filter(r=>r.style.display !== 'none');
+    const hasDyn      = sec.querySelector('[id^="dyn-list-"] .frow');
+    sec.style.display = (visibleRows.length || hasDyn) ? '' : 'none';
+    // Re-mostrar la sección si tiene aunque sea el botón de "+ Agregar" disponible (siempre tiene)
+    sec.style.display = '';
+  });
+}
+
 // ── UI helpers ────────────────────────────────
 function gsTogglePanel(){
   const p = document.getElementById('gs-url-panel');
@@ -2477,12 +3871,20 @@ function gsClosePanel(){
 
 function gsConfirmUrl(){
   const inp = document.getElementById('gs-url-input');
-  const url = inp.value.trim();
-  if(!url){ _gsSetHint('⚠ Pegá una URL válida', 'var(--red2)'); return; }
+  const raw = inp.value.trim();
+  if(!raw){ _gsSetHint('⚠ Pegá una URL válida', 'var(--red2)'); return; }
+
+  // Normalize the URL to CSV export format
+  const url = _gsNormalizeUrl(raw);
+  if(!url){
+    _gsSetHint('⚠ URL no reconocida. Usá el enlace de "Publicar en la web" con formato CSV.', 'var(--red2)');
+    return;
+  }
 
   _gsUrl = url;
+  inp.value = url; // show normalized URL
   try { localStorage.setItem('gs_sheet_url', url); } catch(e){}
-  gsClosePanel();
+  _gsSetHint('⏳ Conectando…', 'var(--blue2)');
 
   // Carga inmediata + arrancar intervalo
   loadGoogleSheetData();
@@ -2492,7 +3894,52 @@ function gsConfirmUrl(){
 
 function _gsSetHint(msg, color){
   const h = document.getElementById('gs-url-hint');
-  if(h){ h.textContent = msg; h.style.color = color || 'var(--t3)'; }
+  if(h){ h.innerHTML = msg; h.style.color = color || 'var(--t3)'; }
+}
+
+// ── Normalize Google Sheets URL ────────────────────
+// Accepts various formats and converts to CSV export URL:
+// 1. Published CSV: https://docs.google.com/spreadsheets/d/e/.../pub?output=csv
+// 2. Direct export: https://docs.google.com/spreadsheets/d/ID/export?format=csv
+// 3. Regular share: https://docs.google.com/spreadsheets/d/ID/edit#gid=0
+// 4. Already correct URL — pass through
+function _gsNormalizeUrl(raw){
+  const u = raw.trim();
+
+  // Already a published CSV or export URL — good to go
+  if(u.includes('/pub?') && u.includes('output=csv')) return u;
+  if(u.includes('/pub?') && u.includes('gid=')) return u + '&output=csv';
+  if(u.includes('/export?') && u.includes('format=csv')) return u;
+
+  // Extract spreadsheet ID from various URL patterns
+  let id = null, gid = '0';
+
+  // Pattern: /spreadsheets/d/e/PUBLISHED_ID/pub
+  const pubMatch = u.match(/\/spreadsheets\/d\/e\/([^\/]+)\//);
+  if(pubMatch){
+    // It's a published URL but missing output=csv
+    const base = u.split('?')[0];
+    const params = new URLSearchParams(u.split('?')[1] || '');
+    gid = params.get('gid') || '0';
+    return base + '?gid=' + gid + '&single=true&output=csv';
+  }
+
+  // Pattern: /spreadsheets/d/ID/
+  const idMatch = u.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+  if(idMatch) id = idMatch[1];
+
+  // Extract gid if present
+  const gidMatch = u.match(/[#&?]gid=(\d+)/);
+  if(gidMatch) gid = gidMatch[1];
+
+  if(id){
+    return `https://docs.google.com/spreadsheets/d/${id}/export?format=csv&gid=${gid}`;
+  }
+
+  // If it looks like a URL but not Google Sheets, try as-is (maybe a raw CSV hosted elsewhere)
+  if(u.startsWith('http://') || u.startsWith('https://')) return u;
+
+  return null; // unrecognized
 }
 
 // ── Hash simple para detectar si el CSV cambió ────────
@@ -2505,6 +3952,40 @@ function _gsHash(str){
   return String(h);
 }
 
+// ── CORS proxy strategies ─────────────────────────────
+// When running from file:// or localhost, direct fetch to Google fails due to CORS.
+// We try multiple strategies in order.
+async function _gsFetchWithCors(url){
+  // Strategy 1: Direct fetch (works if user is on HTTPS hosted page)
+  try {
+    const res = await fetch(url + (url.includes('?') ? '&' : '?') + '_cb=' + Date.now());
+    if(res.ok) return await res.text();
+  } catch(e){ console.log('[GS] Direct fetch failed:', e.message); }
+
+  // Strategy 2: CORS proxy — corsproxy.io
+  try {
+    const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(url);
+    const res = await fetch(proxyUrl);
+    if(res.ok) return await res.text();
+  } catch(e){ console.log('[GS] corsproxy.io failed:', e.message); }
+
+  // Strategy 3: CORS proxy — api.allorigins.win
+  try {
+    const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
+    const res = await fetch(proxyUrl);
+    if(res.ok) return await res.text();
+  } catch(e){ console.log('[GS] allorigins failed:', e.message); }
+
+  // Strategy 4: CORS proxy — api.codetabs.com
+  try {
+    const proxyUrl = 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(url);
+    const res = await fetch(proxyUrl);
+    if(res.ok) return await res.text();
+  } catch(e){ console.log('[GS] codetabs failed:', e.message); }
+
+  throw new Error('No se pudo conectar. Verificá que el Google Sheet esté publicado en la web como CSV.');
+}
+
 // ── loadGoogleSheetData — función principal ───────────
 async function loadGoogleSheetData(){
   if(!_gsUrl) return;
@@ -2512,13 +3993,12 @@ async function loadGoogleSheetData(){
   const tag = document.getElementById('csv-tag');
 
   try {
-    // Añadir cache-buster para evitar respuesta cacheada
-    const fetchUrl = _gsUrl + (_gsUrl.includes('?') ? '&' : '?') + '_cb=' + Date.now();
-    const res = await fetch(fetchUrl);
+    const text = await _gsFetchWithCors(_gsUrl);
 
-    if(!res.ok) throw new Error(`HTTP ${res.status}`);
-
-    const text = await res.text();
+    // Validate it looks like CSV (not an HTML error page)
+    if(text.trim().startsWith('<!') || text.trim().startsWith('<html')){
+      throw new Error('La respuesta es HTML, no CSV. Verificá que el Sheet esté publicado como CSV.');
+    }
 
     // Comparar con último hash — si no cambió, no re-renderizar
     const hash = _gsHash(text);
@@ -2529,6 +4009,7 @@ async function loadGoogleSheetData(){
     const parsed = parseCSV(text);
     if(!parsed || !parsed.length){
       console.error('[GS] CSV vacío o inválido');
+      _gsSetHint('⚠ CSV vacío o formato inválido', 'var(--red2)');
       return;
     }
 
@@ -2541,16 +4022,23 @@ async function loadGoogleSheetData(){
     tag.className = 'h-tag ok';
     document.getElementById('csv-del-btn').style.display = 'inline-block';
 
+    // Hint de éxito
+    const now = new Date();
+    const time = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0') + ':' + now.getSeconds().toString().padStart(2,'0');
+    _gsSetHint('✅ Conectado — ' + csvData.length + ' trades · Última sync: ' + time + ' · Auto-refresh: 15s', 'var(--green2)');
+
     // Persistir en IndexedDB
     try { await dbSaveTrades(csvData); } catch(e){ /* DB save opcional */ }
 
     // Re-renderizar todo
     populateDDs();
+    if(typeof adaptFiltersToCSV === 'function') adaptFiltersToCSV();
     dynReset();
     runAnalysis();
 
   } catch(err){
     console.error('[GS] Error al cargar datos:', err.message);
+    _gsSetHint('⚠ Error: ' + err.message, 'var(--red2)');
     // No romper la app — solo loguear. Mantener datos previos si existen.
     if(!csvData.length){
       tag.textContent = '⚠ Error de carga';
@@ -3571,6 +5059,7 @@ function renderC2(filtered,stats){
   const obsStore = [];
   // Exclude no-fill trades from display (same rule as computeStats)
   const displayTrades = filtered.filter(isExecuted);
+  window._dispTrades50 = displayTrades.slice(0,50);
   document.getElementById('trades-body').innerHTML=displayTrades.slice(0,50).map(t=>{
     const rr  = getRR(t);
     const res = (t[RES_COL]||'').toString().trim().toUpperCase();
@@ -3603,14 +5092,52 @@ function renderC2(filtered,stats){
     const obsIdx = obsStore.length;
     obsStore.push(obsRaw || '—');
 
-    return `<div class="tr-row ${isW?'tw':'tl'}">
+    return `<div class="tr-row ${isW?'tw':'tl'}" onclick="trClick(event,${obsIdx})" title="Click — ver imagen del trade">
       <span class="tx-d">${fecha}</span>
       <span class="${isW?'tx-g':'tx-r'}">${isW?'WIN':'LOSS'}</span>
       <span class="${isW?'tx-g':'tx-r'}">${rrS}</span>
-      <span class="obs-cell${hasContent?' obs-clickable':''}" ${hasContent?`onclick="openObsIdx(${obsIdx})" title="Click — ver observación completa"`:''}>${obsShort}</span>
+      <span class="obs-cell${hasContent?' obs-clickable':''}" ${hasContent?`onclick="event.stopPropagation();openObsIdx(${obsIdx})" title="Click — ver observación completa"`:''}>${obsShort}</span>
     </div>`;
   }).join('');
   window._obsStore = obsStore;
+}
+
+// ══════════════════════════════════════════════
+//  TRADE ROW CLICK → ABRIR IMAGEN DEL TRADE
+// ══════════════════════════════════════════════
+function trClick(e, idx){
+  // No abrir si el click fue sobre la celda de observación (tiene su propio modal)
+  if(e && e.target && e.target.closest && e.target.closest('.obs-cell')) return;
+
+  const list = window._dispTrades50 || [];
+  const trade = list[idx];
+  if(!trade) return;
+
+  const imgCol = (typeof dynState !== 'undefined' && dynState && dynState.imgCol)
+    ? dynState.imgCol
+    : 'Link Trade';
+  const link = (trade[imgCol] || '').toString().trim();
+
+  if(!link){
+    // No hay imagen para este trade — feedback sutil
+    const row = e && e.currentTarget;
+    if(row){
+      row.style.transition = 'box-shadow .2s';
+      row.style.boxShadow = 'inset 0 0 0 1px rgba(255,194,74,.45), 0 0 12px rgba(255,194,74,.15)';
+      setTimeout(()=>{ row.style.boxShadow = ''; }, 700);
+    }
+    return;
+  }
+
+  if(typeof agState === 'undefined' || !agState || !agState.trades || !agState.trades.length) return;
+
+  // Buscar índice del trade en la galería actual por coincidencia de link
+  const matchIdx = agState.trades.findIndex(t =>
+    (t[imgCol] || '').toString().trim() === link
+  );
+  if(matchIdx < 0) return;
+
+  if(typeof agOpen === 'function') agOpen(matchIdx);
 }
 
 // ══════════════════════════════════════════════
@@ -4537,12 +6064,15 @@ async function boot(){
     const saved = await dbLoadTrades();
     if(saved.length > 0){
       csvData = saved;
+      // Reconstruir el column resolver a partir de los headers persistidos
+      try { buildColResolver(Object.keys(saved[0] || {})); } catch(_){}
+      refreshDynamicCols();
       const el = document.getElementById('csv-tag');
       el.textContent = csvData.length+' TRADES (guardados)';
       el.className = 'h-tag ok';
       document.getElementById('csv-del-btn').style.display = 'inline-block';
       populateDDs();
-      refreshDynamicCols();
+      if(typeof adaptFiltersToCSV === 'function') adaptFiltersToCSV();
       dynReset();
       runAnalysis();
     }
@@ -5933,7 +7463,83 @@ function efRenderPlaybook(){
 const agState = {
   trades:  [],   // current filtered trades with images
   index:   0,    // current position
+  zoom:    1,    // current zoom level
+  panX:    0,    // pan offset X when zoomed
+  panY:    0,    // pan offset Y when zoomed
+  dragging:false, // is user dragging to pan
+  dragStartX: 0,
+  dragStartY: 0,
+  dragPanStartX: 0,
+  dragPanStartY: 0,
+  topCols: [],   // cached top columns for extra chips
 };
+
+// ── Detect top 10-15 most filled columns (excluding known ones) ──
+function agDetectTopCols(){
+  if(!csvData.length){ agState.topCols = []; return; }
+  const allCols = Object.keys(csvData[0]);
+  // Columns already displayed in the modal
+  const imgCol  = (dynState && dynState.imgCol) ? dynState.imgCol : 'Link Trade';
+  const exclude = new Set([
+    resolveCol('Fecha'), resolveCol('iFVG - RES'), resolveCol('iFVG - RR'),
+    resolveCol('Observación'), resolveCol('Link Trade'),
+    'Fecha', 'iFVG - RES', 'iFVG - RR', 'Observación', 'Observacion',
+    'Observaciones', 'Obs', 'Notas', 'Notes', 'Link Trade',
+    imgCol, RR_COL, RES_COL,
+    CMAP.dia, CMAP.mes, // already shown via Fecha
+  ]);
+
+  // Count non-empty values per column
+  const counts = {};
+  allCols.forEach(col => {
+    if(exclude.has(col)) return;
+    let filled = 0;
+    csvData.forEach(row => {
+      const v = (row[col] || '').toString().trim();
+      if(v && v !== '—' && v !== '-') filled++;
+    });
+    if(filled > 0) counts[col] = filled;
+  });
+
+  // Sort by fill count (most filled first), take top 15
+  agState.topCols = Object.entries(counts)
+    .sort((a,b) => b[1] - a[1])
+    .slice(0, 15)
+    .map(([col]) => col);
+}
+
+// ── Zoom helpers ──────────────────────────────
+function agResetZoom(){
+  agState.zoom = 1;
+  agState.panX = 0;
+  agState.panY = 0;
+  agState.dragging = false;
+  const img = document.getElementById('ag-img');
+  const wrap = document.getElementById('ag-img-wrap');
+  if(img){
+    img.style.transform = '';
+    img.classList.remove('ag-zoomed', 'ag-dragging');
+  }
+  if(wrap) wrap.classList.remove('ag-zoom-active');
+}
+
+function agApplyZoom(){
+  const img = document.getElementById('ag-img');
+  const wrap = document.getElementById('ag-img-wrap');
+  if(!img) return;
+  const z = agState.zoom;
+  if(z <= 1){
+    img.style.transform = '';
+    img.classList.remove('ag-zoomed');
+    if(wrap) wrap.classList.remove('ag-zoom-active');
+    agState.panX = 0;
+    agState.panY = 0;
+  } else {
+    img.style.transform = `scale(${z}) translate(${agState.panX}px, ${agState.panY}px)`;
+    img.classList.add('ag-zoomed');
+    if(wrap) wrap.classList.add('ag-zoom-active');
+  }
+}
 
 function updateGallery(filteredTrades) {
   const gallery = document.getElementById('trade-gallery');
@@ -6035,6 +7641,9 @@ function agRender() {
   if (prev) prev.style.opacity = index === 0 ? '.25' : '1';
   if (next) next.style.opacity = index === trades.length - 1 ? '.25' : '1';
 
+  // ── Reset zoom on image change ──────────────
+  agResetZoom();
+
   // ── Trade info ──────────────────────────────
   const fechaCol = resolveCol('Fecha');
   const fecha = trade[fechaCol]
@@ -6056,6 +7665,23 @@ function agRender() {
   if (rrEl) {
     rrEl.textContent = rrFmt;
     rrEl.className = 'ag-info-val' + (rr !== null ? (rr >= 0 ? ' win' : ' loss') : '');
+  }
+
+  // ── Extra columns — top 10-15 most filled CSV cols ──
+  const extraWrap = document.getElementById('ag-extra-cols');
+  if (extraWrap) {
+    if (!agState.topCols.length) agDetectTopCols();
+    let chipsHtml = '';
+    agState.topCols.forEach(col => {
+      const val = (trade[col] || '').toString().trim();
+      if (!val || val === '—' || val === '-') return;
+      chipsHtml += `<div class="ag-extra-chip" title="${col}: ${val}">
+        <span class="ag-extra-chip-lbl">${col}:</span>
+        <span class="ag-extra-chip-val">${val}</span>
+      </div>`;
+    });
+    extraWrap.innerHTML = chipsHtml;
+    extraWrap.style.display = chipsHtml ? 'flex' : 'none';
   }
 
   // ── Observaciones — mostrar texto COMPLETO ──
@@ -6102,12 +7728,109 @@ function agClose(e) {
   if (!m) return;
   const closeBtn = document.getElementById('ag-close');
   if (!e || e.target === m || e.target === closeBtn) {
+    agResetZoom();
     m.classList.remove('ag-open');
     document.getElementById('ag-img').src = '';
     document.body.style.overflow = '';
     document.removeEventListener('keydown', agKeyNav);
   }
 }
+
+// ── Zoom event handlers ──────────────────────────
+(function initZoomHandlers(){
+  document.addEventListener('DOMContentLoaded', () => {
+    const img  = document.getElementById('ag-img');
+    const wrap = document.getElementById('ag-img-wrap');
+    if(!img || !wrap) return;
+
+    // Click to toggle zoom (1x ↔ 2.5x)
+    img.addEventListener('click', function(e){
+      // Don't zoom if we were dragging
+      if(agState._wasDragging){ agState._wasDragging = false; return; }
+      e.stopPropagation();
+
+      if(agState.zoom <= 1){
+        // Zoom in — set transform-origin to click point
+        const rect = img.getBoundingClientRect();
+        const ox = ((e.clientX - rect.left) / rect.width) * 100;
+        const oy = ((e.clientY - rect.top) / rect.height) * 100;
+        img.style.transformOrigin = `${ox}% ${oy}%`;
+        agState.zoom = 2.5;
+        agState.panX = 0;
+        agState.panY = 0;
+      } else {
+        // Zoom out
+        agState.zoom = 1;
+        agState.panX = 0;
+        agState.panY = 0;
+        img.style.transformOrigin = 'center center';
+      }
+      agApplyZoom();
+    });
+
+    // Wheel to zoom gradually (1x → 4x)
+    wrap.addEventListener('wheel', function(e){
+      const modal = document.getElementById('ag-modal');
+      if(!modal || !modal.classList.contains('ag-open')) return;
+      e.preventDefault();
+      e.stopPropagation();
+
+      const delta = e.deltaY > 0 ? -0.3 : 0.3;
+      const newZoom = Math.max(1, Math.min(4, agState.zoom + delta));
+
+      if(newZoom <= 1){
+        agState.zoom = 1;
+        agState.panX = 0;
+        agState.panY = 0;
+        img.style.transformOrigin = 'center center';
+      } else {
+        // Set origin on first zoom-in via wheel
+        if(agState.zoom <= 1){
+          const rect = img.getBoundingClientRect();
+          const ox = ((e.clientX - rect.left) / rect.width) * 100;
+          const oy = ((e.clientY - rect.top) / rect.height) * 100;
+          img.style.transformOrigin = `${ox}% ${oy}%`;
+        }
+        agState.zoom = newZoom;
+      }
+      agApplyZoom();
+    }, {passive: false});
+
+    // Drag to pan when zoomed
+    img.addEventListener('mousedown', function(e){
+      if(agState.zoom <= 1) return;
+      e.preventDefault();
+      e.stopPropagation();
+      agState.dragging = true;
+      agState._wasDragging = false;
+      agState.dragStartX = e.clientX;
+      agState.dragStartY = e.clientY;
+      agState.dragPanStartX = agState.panX;
+      agState.dragPanStartY = agState.panY;
+      img.classList.add('ag-dragging');
+    });
+
+    document.addEventListener('mousemove', function(e){
+      if(!agState.dragging) return;
+      e.preventDefault();
+      const dx = (e.clientX - agState.dragStartX) / agState.zoom;
+      const dy = (e.clientY - agState.dragStartY) / agState.zoom;
+      agState.panX = agState.dragPanStartX + dx;
+      agState.panY = agState.dragPanStartY + dy;
+      agState._wasDragging = true;
+      agApplyZoom();
+    });
+
+    document.addEventListener('mouseup', function(){
+      if(!agState.dragging) return;
+      agState.dragging = false;
+      const img = document.getElementById('ag-img');
+      if(img) img.classList.remove('ag-dragging');
+      // Delay resetting _wasDragging so click handler can check it
+      setTimeout(() => { agState._wasDragging = false; }, 50);
+    });
+  });
+})();
 
 // ══════════════════════════════════════════════
 //  DYNAMIC CHECKLIST + IMAGE COLUMN SYSTEM
@@ -6211,6 +7934,7 @@ function dynAddField(cat){
     const rmBtn = document.createElement('button');
     rmBtn.textContent = '×';
     rmBtn.title = 'Eliminar';
+    rmBtn.className = 'rm-btn';
     rmBtn.style.cssText = [
       'background:none','border:none','color:var(--t3)',
       'font-size:12px','font-weight:800','cursor:pointer',
@@ -6366,6 +8090,7 @@ function dynReset(){
   dynState.imgCol   = resolveCol('Link Trade') || 'Link Trade';
   dynState.rrCol    = '';   // '' = use auto-resolved RR_COL
   dynState.counter  = 0;
+  agState.topCols   = [];  // reset extra columns cache
   ['tiempo','contexto','setup'].forEach(cat=>{
     const list = document.getElementById('dyn-list-'+cat);
     if(list) list.innerHTML = '';
@@ -6378,8 +8103,7 @@ function dynReset(){
 }
 
 // ══════════════════════════════════════════════
-// Clear any saved Google Sheets URL from previous version
-localStorage.removeItem('gs_sheet_url');
+// Google Sheets URL persistence — URL is saved/restored in boot()
 // ══════════════════════════════════════════════
 //  DIARIO DE TRADING
 // ══════════════════════════════════════════════
@@ -6778,6 +8502,496 @@ function initSliders() {
     if (el) updateSliderStyle(el);
   });
 }
+
+// ════════════════════════════════════════════════════════════════════
+//  ADAPTIVE SCHEMA MODULE — soporta cualquier CSV de trading
+//  ▸ Mapeo manual de roles (Resultado, RR, Fecha, Imagen, Obs)
+//  ▸ Auto-detección de filtros categóricos
+//  ▸ Persistencia por hash de headers
+// ════════════════════════════════════════════════════════════════════
+
+const SCHEMA_KEY = 'journal_schema_v1';
+
+const userSchema = {
+  result: '',
+  rr:     '',
+  date:   '',
+  image:  '',
+  obs:    '',
+  filters: [],   // array de columnas usadas como filtros
+  hash:   '',
+};
+
+function _schemaHash(headers){
+  const s = (headers || []).join('|');
+  let h = 0;
+  for(let i=0;i<s.length;i++){ h = ((h<<5)-h) + s.charCodeAt(i); h |= 0; }
+  return String(h);
+}
+
+function _schemaStore(){
+  try { return JSON.parse(localStorage.getItem(SCHEMA_KEY)) || {}; }
+  catch(_){ return {}; }
+}
+function _schemaSave(hash, schema){
+  try {
+    const all = _schemaStore();
+    all[hash] = schema;
+    localStorage.setItem(SCHEMA_KEY, JSON.stringify(all));
+  } catch(_){}
+}
+function _schemaLoad(hash){
+  const all = _schemaStore();
+  return all[hash] || null;
+}
+
+// Auto-detect roles using existing colResolverCache + heuristics
+function _autoDetectSchema(headers){
+  const h = headers || [];
+  const sch = { result:'', rr:'', date:'', image:'', obs:'', filters:[], hash:_schemaHash(h) };
+
+  // 1. Use the fuzzy resolver first
+  if(typeof colResolverCache !== 'undefined'){
+    sch.result = colResolverCache['iFVG - RES'] || '';
+    sch.rr     = colResolverCache['iFVG - RR']  || '';
+    sch.date   = colResolverCache['Fecha']      || '';
+    sch.image  = colResolverCache['Link Trade'] || '';
+    sch.obs    = colResolverCache['Observación']|| '';
+  }
+
+  // 2. Heuristic fallback over actual column data
+  const sample = (csvData || []).slice(0, Math.min(50, csvData.length));
+  const colInfo = h.map(col => {
+    const vals = sample.map(r => (r[col] || '').toString().trim()).filter(Boolean);
+    const lower = vals.map(v => v.toLowerCase());
+    const numCount = vals.filter(v => !isNaN(parseFloat(v.replace(',','.')))).length;
+    const urlCount = vals.filter(v => /^https?:\/\//.test(v)).length;
+    const winLossCount = lower.filter(v => /^(win|loss|w|l|ganado|perdido|gain|profit|tp|sl|be)\b/i.test(v)).length;
+    const longTextCount = vals.filter(v => v.length > 40).length;
+    const dateCount = vals.filter(v => /^\d{1,4}[\/\-.]\d{1,2}([\/\-.]\d{1,4})?$/.test(v)).length;
+    const unique = new Set(vals).size;
+    return {
+      col, count: vals.length,
+      numRatio:    vals.length ? numCount / vals.length    : 0,
+      urlRatio:    vals.length ? urlCount / vals.length    : 0,
+      winLossRatio:vals.length ? winLossCount / vals.length : 0,
+      longRatio:   vals.length ? longTextCount / vals.length: 0,
+      dateRatio:   vals.length ? dateCount / vals.length   : 0,
+      unique,
+      values: vals,
+    };
+  });
+
+  // Result: column with highest win/loss ratio
+  if(!sch.result){
+    const cand = colInfo.filter(c => c.winLossRatio > .5).sort((a,b)=>b.winLossRatio-a.winLossRatio)[0];
+    if(cand) sch.result = cand.col;
+  }
+  // RR: numeric-heavy column with negative+positive values, NOT the result col
+  if(!sch.rr){
+    const cands = colInfo
+      .filter(c => c.col !== sch.result && c.numRatio > .7)
+      .map(c => {
+        const nums = c.values.map(v=>parseFloat(v.replace(',','.'))).filter(n=>!isNaN(n));
+        const hasNeg = nums.some(n=>n<0), hasPos = nums.some(n=>n>0);
+        return { ...c, hasNeg, hasPos };
+      })
+      .filter(c => c.hasNeg && c.hasPos);
+    if(cands.length) sch.rr = cands[0].col;
+  }
+  // Image: URL-heavy column
+  if(!sch.image){
+    const cand = colInfo.filter(c => c.urlRatio > .5).sort((a,b)=>b.urlRatio-a.urlRatio)[0];
+    if(cand) sch.image = cand.col;
+  }
+  // Observation: long-text-heavy column
+  if(!sch.obs){
+    const cand = colInfo
+      .filter(c => c.longRatio > .3 && c.col !== sch.image)
+      .sort((a,b)=>b.longRatio-a.longRatio)[0];
+    if(cand) sch.obs = cand.col;
+  }
+  // Date: date-pattern-heavy
+  if(!sch.date){
+    const cand = colInfo.filter(c => c.dateRatio > .5).sort((a,b)=>b.dateRatio-a.dateRatio)[0];
+    if(cand) sch.date = cand.col;
+  }
+
+  // 3. Auto-detect filterable columns: categorical (2..40 unique values), not a role column
+  const roleCols = new Set([sch.result, sch.rr, sch.date, sch.image, sch.obs].filter(Boolean));
+  sch.filters = colInfo
+    .filter(c => !roleCols.has(c.col))
+    .filter(c => c.count >= 2)
+    .filter(c => c.unique >= 2 && c.unique <= 40)
+    .filter(c => c.longRatio < .15)   // exclude long-text-heavy
+    .filter(c => c.urlRatio < .15)    // exclude URLs
+    .map(c => c.col);
+
+  return sch;
+}
+
+// Inject user schema into colResolverCache so all existing logic uses it
+function _applySchemaToResolver(){
+  if(typeof colResolverCache === 'undefined') return;
+  if(userSchema.result) colResolverCache['iFVG - RES'] = userSchema.result;
+  if(userSchema.rr)     colResolverCache['iFVG - RR']  = userSchema.rr;
+  if(userSchema.date)   colResolverCache['Fecha']      = userSchema.date;
+  if(userSchema.image)  colResolverCache['Link Trade'] = userSchema.image;
+  if(userSchema.obs)    colResolverCache['Observación']= userSchema.obs;
+}
+
+// ── Build dynamic filter UI from userSchema.filters ──────
+function buildDynamicFilters(){
+  const section = document.getElementById('dyn-filters-section');
+  const list    = document.getElementById('dyn-filters-list');
+  const empty   = document.getElementById('dyn-filters-empty');
+  if(!section || !list) return;
+
+  if(!csvData.length){
+    section.style.display = 'none';
+    return;
+  }
+  section.style.display = '';
+
+  // Reset state for these filters
+  list.innerHTML = '';
+  if(!dynState.cats) dynState.cats = { tiempo:[], contexto:[], setup:[] };
+  // Use the 'contexto' bucket so dynApplyFilters picks them up
+  dynState.cats.contexto = [];
+
+  if(!userSchema.filters || !userSchema.filters.length){
+    empty.style.display = '';
+    return;
+  }
+  empty.style.display = 'none';
+
+  userSchema.filters.forEach(col => {
+    if(!col) return;
+    if(!csvData[0] || !(col in csvData[0])) return;
+
+    const id = 'dyn-f-' + (++dynState.counter);
+    dynState.cats.contexto.push({ id, col, value:'' });
+
+    const block = document.createElement('div');
+    block.className = 'frow';
+    block.id = id;
+    block.style.cssText = 'margin-bottom:9px;position:relative;';
+
+    const labelRow = document.createElement('div');
+    labelRow.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;';
+
+    const lbl = document.createElement('label');
+    lbl.textContent = col;
+    lbl.style.cssText = 'margin-bottom:0;flex:1;text-transform:uppercase;letter-spacing:1px;font-size:8px;';
+
+    const rmBtn = document.createElement('button');
+    rmBtn.textContent = '×';
+    rmBtn.title = 'Quitar este filtro';
+    rmBtn.className = 'rm-btn';
+    rmBtn.style.cssText = 'background:none;border:none;color:var(--t3);font-size:13px;font-weight:800;cursor:pointer;line-height:1;padding:0 4px;';
+    rmBtn.onmouseover = ()=>{ rmBtn.style.color='var(--red2)'; };
+    rmBtn.onmouseout  = ()=>{ rmBtn.style.color='var(--t3)'; };
+    rmBtn.onclick = ()=>{
+      userSchema.filters = userSchema.filters.filter(c => c !== col);
+      _schemaSave(userSchema.hash, _schemaSerialize());
+      buildDynamicFilters();
+      runAnalysis();
+    };
+
+    labelRow.appendChild(lbl);
+    labelRow.appendChild(rmBtn);
+
+    const valSel = document.createElement('select');
+    valSel.style.cssText = 'width:100%;';
+    valSel.className = 'frow-dyn-val';
+    const vals = dynGetVals(col);
+    valSel.innerHTML = '<option value="">— Todos —</option>';
+    vals.forEach(v=>{
+      const o = document.createElement('option');
+      o.value = v; o.textContent = v;
+      valSel.appendChild(o);
+    });
+    valSel.addEventListener('change', function(){
+      const field = dynState.cats.contexto.find(f=>f.id===id);
+      if(field) field.value = this.value;
+      this.classList.toggle('active', !!this.value);
+      updateFCCount();
+      runAnalysis();
+    });
+
+    block.appendChild(labelRow);
+    block.appendChild(valSel);
+    list.appendChild(block);
+  });
+}
+
+function _schemaSerialize(){
+  return {
+    result: userSchema.result, rr: userSchema.rr,
+    date: userSchema.date, image: userSchema.image, obs: userSchema.obs,
+    filters: [...(userSchema.filters||[])],
+    hash: userSchema.hash,
+  };
+}
+
+// ── Mapping modal ────────────────────────────
+function openMappingModal(){
+  if(!csvData.length){
+    alert('Primero cargá un CSV.');
+    return;
+  }
+  const m = document.getElementById('map-modal');
+  if(!m) return;
+
+  const headers = Object.keys(csvData[0] || {});
+
+  ['result','rr','date','image','obs'].forEach(role => {
+    const sel = document.getElementById('map-' + role);
+    if(!sel) return;
+    sel.innerHTML = '<option value="">— Ninguna —</option>';
+    headers.forEach(h => {
+      const o = document.createElement('option');
+      o.value = h; o.textContent = h;
+      if(userSchema[role] === h) o.selected = true;
+      sel.appendChild(o);
+    });
+  });
+
+  // Filter checkboxes
+  const fl = document.getElementById('map-filters-list');
+  fl.innerHTML = '';
+  const roleCols = new Set([userSchema.result, userSchema.rr, userSchema.date, userSchema.image, userSchema.obs].filter(Boolean));
+  headers.forEach(col => {
+    if(roleCols.has(col)) return;
+    const vals = dynGetVals(col);
+    const checked = (userSchema.filters || []).includes(col);
+    const chip = document.createElement('label');
+    chip.className = 'map-fchip' + (checked ? ' active' : '');
+    chip.innerHTML = `
+      <input type="checkbox" ${checked?'checked':''} data-col="${col.replace(/"/g,'&quot;')}">
+      <span>${col}</span>
+      <span class="map-fchip-card">${vals.length} valores</span>
+    `;
+    const cb = chip.querySelector('input');
+    cb.addEventListener('change', function(){
+      chip.classList.toggle('active', this.checked);
+    });
+    fl.appendChild(chip);
+  });
+
+  m.classList.add('open');
+}
+
+function closeMappingModal(){
+  const m = document.getElementById('map-modal');
+  if(m) m.classList.remove('open');
+}
+
+function mappingAutoFill(){
+  const headers = Object.keys(csvData[0] || {});
+  const detected = _autoDetectSchema(headers);
+  ['result','rr','date','image','obs'].forEach(role => {
+    const sel = document.getElementById('map-' + role);
+    if(sel && detected[role]) sel.value = detected[role];
+  });
+  // Filter chips
+  document.querySelectorAll('#map-filters-list .map-fchip').forEach(chip => {
+    const cb = chip.querySelector('input');
+    const col = cb.dataset.col;
+    const should = (detected.filters || []).includes(col);
+    cb.checked = should;
+    chip.classList.toggle('active', should);
+  });
+}
+
+function mappingSaveAndApply(){
+  userSchema.result = document.getElementById('map-result').value || '';
+  userSchema.rr     = document.getElementById('map-rr').value     || '';
+  userSchema.date   = document.getElementById('map-date').value   || '';
+  userSchema.image  = document.getElementById('map-image').value  || '';
+  userSchema.obs    = document.getElementById('map-obs').value    || '';
+  userSchema.filters = [...document.querySelectorAll('#map-filters-list .map-fchip input:checked')]
+    .map(cb => cb.dataset.col);
+
+  _schemaSave(userSchema.hash, _schemaSerialize());
+  _applySchemaToResolver();
+  refreshDynamicCols();
+  if(dynState) dynState.imgCol = userSchema.image || resolveCol('Link Trade') || 'Link Trade';
+
+  buildDynamicFilters();
+  closeMappingModal();
+  runAnalysis();
+}
+
+// ── Main entry: orchestrate after CSV parse ─────
+function adaptCSVToSchema(){
+  if(!csvData.length) return;
+  const headers = Object.keys(csvData[0] || {});
+  const hash    = _schemaHash(headers);
+
+  const saved = _schemaLoad(hash);
+  if(saved){
+    Object.assign(userSchema, saved);
+    userSchema.hash = hash;
+  } else {
+    const detected = _autoDetectSchema(headers);
+    Object.assign(userSchema, detected);
+    userSchema.hash = hash;
+    _schemaSave(hash, _schemaSerialize());
+  }
+
+  _applySchemaToResolver();
+  refreshDynamicCols();
+  if(dynState) dynState.imgCol = userSchema.image || resolveCol('Link Trade') || 'Link Trade';
+
+  // Show map button & build filters
+  const mb = document.getElementById('map-btn');
+  if(mb) mb.style.display = 'inline-block';
+
+  // Hide legacy static filter sections — fully replaced by dynamic system
+  document.querySelectorAll('#c1 .cbody > .fsec').forEach(sec => {
+    sec.style.display = 'none';
+  });
+
+  buildDynamicFilters();
+
+  // If critical roles missing, open the modal automatically
+  if(!userSchema.result || !userSchema.rr){
+    setTimeout(()=>{
+      openMappingModal();
+      const sub = document.getElementById('map-sub');
+      if(sub){
+        sub.innerHTML = '<b style="color:#ffc24a;">⚠ No pudimos detectar las columnas críticas.</b> Asigná manualmente <b>Resultado</b> y <b>RR/Retorno</b> para ver las estadísticas.';
+      }
+    }, 300);
+  }
+}
+
+// ── Hook into csvFileLoad: monkey-patch to call adaptCSVToSchema ─
+(function(){
+  const origLoad = window.csvFileLoad;
+  if(typeof origLoad !== 'function') return;
+  window.csvFileLoad = function(ev){
+    const f = ev.target.files && ev.target.files[0];
+    if(!f) return;
+
+    const tag = document.getElementById('csv-tag');
+    if(tag){ tag.textContent = '⏳ Leyendo archivo…'; tag.className = 'h-tag off'; }
+
+    const reader = new FileReader();
+    reader.onload = async function(e){
+      try {
+        const text = e.target.result || '';
+        if(!text.trim()){
+          if(tag){ tag.textContent = '⚠ Archivo vacío'; tag.className = 'h-tag off'; }
+          return;
+        }
+
+        if(typeof _gsInterval !== 'undefined' && _gsInterval){
+          clearInterval(_gsInterval); _gsInterval = null;
+        }
+        if(typeof _gsUrl !== 'undefined') _gsUrl = '';
+        try { localStorage.removeItem('gs_sheet_url'); } catch(_){}
+
+        const parsed = parseCSV(text);
+        if(!parsed || !parsed.length){
+          if(tag){ tag.textContent = '⚠ CSV inválido o vacío'; tag.className = 'h-tag off'; }
+          return;
+        }
+
+        csvData = parsed;
+        // Run schema adapter (auto-detect or apply saved mapping for this file format)
+        adaptCSVToSchema();
+
+        // UI header
+        const cols = csvData[0] ? Object.keys(csvData[0]).length : 0;
+        if(tag){
+          tag.textContent = csvData.length + ' filas · ' + cols + ' col · ' + (f.name || 'archivo');
+          tag.className   = 'h-tag ok';
+          tag.title       = f.name + ' — ' + cols + ' columnas, ' + csvData.length + ' filas';
+        }
+        const delBtn = document.getElementById('csv-del-btn');
+        if(delBtn) delBtn.style.display = 'inline-block';
+
+        try { await dbSaveTrades(csvData); } catch(_){}
+
+        populateDDs();
+        if(typeof adaptFiltersToCSV === 'function') adaptFiltersToCSV();
+        dynShow();
+        runAnalysis();
+
+        console.log('[CSV]', f.name, '·', csvData.length, 'filas ·', cols, 'columnas');
+        console.log('[Schema]', userSchema);
+      } catch(err){
+        console.error('[CSV] Error:', err);
+        if(tag){ tag.textContent = '⚠ ' + (err.message || 'Error al leer'); tag.className = 'h-tag off'; }
+      } finally {
+        ev.target.value = '';
+      }
+    };
+    reader.onerror = function(){
+      if(tag){ tag.textContent = '⚠ No se pudo leer el archivo'; tag.className = 'h-tag off'; }
+    };
+    reader.readAsText(f, 'UTF-8');
+  };
+})();
+
+// Header heuristic: if the first parsed row looks like data (numeric IDs, dates),
+// re-parse without header so synthetic column names are used.
+(function(){
+  const origParse = window.parseCSV;
+  if(typeof origParse !== 'function') return;
+  window.parseCSV = function(txt){
+    let rows = origParse(txt);
+    if(!rows || !rows.length) return rows;
+
+    const headers = Object.keys(rows[0]);
+    if(!headers.length) return rows;
+
+    // Heuristic — does any header look like data rather than a label?
+    const looksLikeData = headers.filter(h => {
+      const t = (h || '').trim();
+      if(!t) return false;
+      if(/^https?:\/\//i.test(t)) return true;
+      if(/^[+\-]?\d+([.,]\d+)?$/.test(t)) return true; // pure number
+      if(/^\d{1,4}[\/\-.]\d{1,2}/.test(t)) return true; // date
+      if(t.length > 50) return true;
+      return false;
+    }).length;
+
+    // If >30% of headers look like data, treat first row as data and synthesize headers
+    if(looksLikeData / headers.length > 0.3){
+      console.warn('[CSV] El archivo no parece tener encabezados — se generan nombres "Col 1", "Col 2"...');
+      const cleaned = txt.replace(/^﻿/, '');
+      // Detect delimiter
+      const firstLine = cleaned.split(/\r?\n/)[0] || '';
+      const counts = {',':0, ';':0, '\t':0, '|':0};
+      for(const ch of firstLine){ if(counts[ch] !== undefined) counts[ch]++; }
+      const delim = Object.entries(counts).sort((a,b)=>b[1]-a[1])[0][0] || ',';
+
+      // Build synthetic headers + prepend
+      const numCols = firstLine.split(delim).length;
+      const synth = Array.from({length:numCols}, (_,i)=>'Col ' + (i+1));
+      const newTxt = synth.join(delim) + '\n' + cleaned;
+
+      rows = origParse(newTxt);
+    }
+
+    return rows;
+  };
+})();
+
+// ── Restore saved schema on boot when reading from IndexedDB ──
+(function(){
+  // Patch: after IndexedDB-restored csvData, also adapt schema
+  const obs = setInterval(()=>{
+    if(csvData && csvData.length && !userSchema.hash){
+      adaptCSVToSchema();
+      buildDynamicFilters();
+    }
+  }, 600);
+  setTimeout(()=>clearInterval(obs), 5000);
+})();
 </script>
 
 <!-- GALLERY CAROUSEL MODAL -->
@@ -6807,6 +9021,9 @@ function initSliders() {
         <div class="ag-info-val" id="ag-rr">—</div>
       </div>
     </div>
+    <!-- Extra columns from CSV -->
+    <div id="ag-extra-cols" style="display:none;"></div>
+    <!-- Observaciones -->
     <div class="ag-obs" id="ag-obs-wrap" style="display:none;">
       <div class="ag-obs-lbl">Observaciones</div>
       <div class="ag-obs-text" id="ag-obs-text"></div>
