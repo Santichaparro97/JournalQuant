@@ -6177,6 +6177,26 @@ function renderDAE(stats, filters, verdict, vclass, conf, score, filtered){
     return null;
   })();
   const fechaCol = _findFechaCol || fechaColRes;
+  // Helper: buscar un año válido en CUALQUIER columna del trade (Año, Year, Anio,
+  // o columnas tipo "AÑO 2018", etc.). Devuelve null si no encuentra ninguno razonable.
+  const _findYearInRow = (t) => {
+    if(!t) return null;
+    const yearKeys = ['Año','Ano','Anio','Year','año','ano','anio','year','AÑO','ANO','YEAR'];
+    for(const k of yearKeys){
+      const v = parseInt(t[k]);
+      if(_yrOK(v)) return v;
+    }
+    // Búsqueda más laxa: cualquier columna cuyo nombre normalizado sea exactamente 'ano'/'year'
+    for(const k of Object.keys(t)){
+      const n = _norm(k);
+      if(n === 'ano' || n === 'year' || n === 'anio'){
+        const v = parseInt(t[k]);
+        if(_yrOK(v)) return v;
+      }
+    }
+    return null;
+  };
+
   // Parser robusto. Orden: 4-dígitos primero para evitar ambigüedad.
   const parseTradeDate = (t) => {
     const f = (t[fechaCol]||'').toString().trim();
@@ -6199,6 +6219,14 @@ function renderDAE(stats, filters, verdict, vclass, conf, score, filtered){
         const yy = 2000 + parseInt(m[3]);
         if(_yrOK(yy)) return new Date(yy, parseInt(m[2])-1, parseInt(m[1]));
       }
+      // dd/mm SIN año → combinar con columna Año/Year del mismo trade
+      m = f.match(/^(\d{1,2})[\/\-\.\s](\d{1,2})\s*$/);
+      if(m){
+        const yy = _findYearInRow(t);
+        if(yy != null) return new Date(yy, parseInt(m[2])-1, parseInt(m[1]));
+        // Sin año → no inventar. Retorna null para que el trade no aparezca con año mal.
+        return null;
+      }
       // "5 Jun 2025" o "5-jun-2025"
       m = f.match(/^(\d{1,2})[\/\-\.\s]+([A-Za-zÁÉÍÓÚáéíóú]{3,})[\/\-\.\s]+(\d{2,4})/);
       if(m){
@@ -6217,23 +6245,21 @@ function renderDAE(stats, filters, verdict, vclass, conf, score, filtered){
           if(_yrOK(yy)) return new Date(yy, mes-1, parseInt(m[2]));
         }
       }
-      // Último recurso: Date.parse, pero validamos el año del resultado
-      const dn = Date.parse(f);
-      if(!isNaN(dn)){
-        const dd = new Date(dn);
-        if(_yrOK(dd.getFullYear())) return dd;
+      // Último recurso: Date.parse — pero SOLO si el string contiene un año
+      // de 4 dígitos explícito (evita "03/01" → 2001 por default del navegador).
+      if(/\b(19|20)\d{2}\b/.test(f)){
+        const dn = Date.parse(f);
+        if(!isNaN(dn)){
+          const dd = new Date(dn);
+          if(_yrOK(dd.getFullYear())) return dd;
+        }
       }
     }
-    // Fallback usando Dia + Mes (numéricos)
+    // Fallback usando Dia + Mes (numéricos) cuando la columna Fecha no es parseable
     const dia = parseInt(t[_diaKey]);
     const mes = parseInt(t[_mesKey]);
     if(isFinite(dia) && isFinite(mes)){
-      const yearKeys = ['Año','Ano','Year','año','ano','year','AÑO','ANO','YEAR'];
-      let yy = null;
-      for(const k of yearKeys){
-        const v = parseInt(t[k]);
-        if(_yrOK(v)){ yy = v; break; }
-      }
+      const yy = _findYearInRow(t);
       if(yy != null) return new Date(yy, mes-1, dia);
     }
     return null;
