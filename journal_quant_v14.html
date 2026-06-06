@@ -6139,41 +6139,113 @@ function renderDAE(stats, filters, verdict, vclass, conf, score, filtered){
   const fechaColRes = (typeof resolveCol==='function' ? resolveCol('Fecha') : 'Fecha');
   const _diaKey = (typeof CMAP!=='undefined' ? CMAP.dia : 'Dia');
   const _mesKey = (typeof CMAP!=='undefined' ? CMAP.mes : 'Mes');
+  const _MES_MAP = {
+    'ene':1,'enero':1,'jan':1,'january':1,
+    'feb':2,'febrero':2,'february':2,
+    'mar':3,'marzo':3,'march':3,
+    'abr':4,'abril':4,'apr':4,'april':4,
+    'may':5,'mayo':5,
+    'jun':6,'junio':6,'june':6,
+    'jul':7,'julio':7,'july':7,
+    'ago':8,'agosto':8,'aug':8,'august':8,
+    'sep':9,'sept':9,'septiembre':9,'september':9,
+    'oct':10,'octubre':10,'october':10,
+    'nov':11,'noviembre':11,'november':11,
+    'dic':12,'diciembre':12,'dec':12,'december':12,
+  };
+  // Más permisivo: acepta dd/mm/yyyy, yyyy-mm-dd, "5 Jun 2025", "Jun 5 2025",
+  // ISO datetime, o Date.parse como último recurso.
   const parseTradeDate = (t) => {
     const f = (t[fechaColRes]||'').toString().trim();
     if(f){
-      let m = f.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})/);
+      let m = f.match(/^(\d{1,2})[\/\-\.\s](\d{1,2})[\/\-\.\s](\d{2,4})/);
       if(m){
         const yy = m[3].length===2 ? 2000+parseInt(m[3]) : parseInt(m[3]);
         return new Date(yy, parseInt(m[2])-1, parseInt(m[1]));
       }
       m = f.match(/^(\d{4})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})/);
       if(m) return new Date(parseInt(m[1]), parseInt(m[2])-1, parseInt(m[3]));
+      // "5 Jun 2025" o "5-jun-2025"
+      m = f.match(/^(\d{1,2})[\/\-\.\s]+([A-Za-zÁÉÍÓÚáéíóú]{3,})[\/\-\.\s]+(\d{2,4})/);
+      if(m){
+        const mes = _MES_MAP[m[2].toLowerCase()];
+        if(mes){
+          const yy = m[3].length===2 ? 2000+parseInt(m[3]) : parseInt(m[3]);
+          return new Date(yy, mes-1, parseInt(m[1]));
+        }
+      }
+      // "Jun 5 2025"
+      m = f.match(/^([A-Za-zÁÉÍÓÚáéíóú]{3,})[\/\-\.\s]+(\d{1,2})[\/\-\.\s]+(\d{2,4})/);
+      if(m){
+        const mes = _MES_MAP[m[1].toLowerCase()];
+        if(mes){
+          const yy = m[3].length===2 ? 2000+parseInt(m[3]) : parseInt(m[3]);
+          return new Date(yy, mes-1, parseInt(m[2]));
+        }
+      }
+      // Último recurso: Date.parse nativo (acepta ISO, RFC2822, etc.)
+      const dn = Date.parse(f);
+      if(!isNaN(dn)) return new Date(dn);
     }
+    // Fallback usando Dia + Mes (numéricos)
     const dia = parseInt(t[_diaKey]);
     const mes = parseInt(t[_mesKey]);
-    if(isFinite(dia) && isFinite(mes)) return new Date(new Date().getFullYear(), mes-1, dia);
+    if(isFinite(dia) && isFinite(mes)){
+      // buscar año en algún campo común
+      const yearKeys = ['Año','Ano','Year','año','ano','year'];
+      let yy = new Date().getFullYear();
+      for(const k of yearKeys){
+        const v = parseInt(t[k]);
+        if(isFinite(v) && v > 1900){ yy = v; break; }
+      }
+      return new Date(yy, mes-1, dia);
+    }
     return null;
   };
 
   // ── Serie 1: progreso MES A MES sobre TODO el CSV cargado ──
   const allTrades = (typeof csvData !== 'undefined' && Array.isArray(csvData)) ? csvData : [];
   const _monthMap = new Map(); // 'YYYY-MM' → suma R del mes
+  let _monthlyDated = 0;
   allTrades.forEach(t => {
     const rr = parseRRSafe(t[RR_COL]);
-    const d  = parseTradeDate(t);
-    if(rr==null || !d) return;
+    if(rr == null) return;
+    const d = parseTradeDate(t);
+    if(!d) return;
+    _monthlyDated++;
     const k = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
     _monthMap.set(k, (_monthMap.get(k)||0) + rr);
   });
   const _monthKeys = [..._monthMap.keys()].sort();
   let _mcum = 0;
-  const monthlySeries = _monthKeys.map(k => { _mcum += _monthMap.get(k); return { label:k, value:_mcum }; });
+  let monthlySeries = _monthKeys.map(k => { _mcum += _monthMap.get(k); return { label:k, value:_mcum }; });
+  // Fallback: si no se pudo parsear fecha en ningún trade, agrupar en 12 bloques
+  // preservando el orden del CSV. Así igual ves la curva acumulada del archivo.
+  let _monthlyIsFallback = false;
+  if(monthlySeries.length < 2 && allTrades.length){
+    const valid = allTrades.map(t => parseRRSafe(t[RR_COL])).filter(v => v != null);
+    if(valid.length >= 2){
+      const buckets = Math.min(12, valid.length);
+      const size = Math.ceil(valid.length / buckets);
+      const arr = [];
+      let cum = 0;
+      for(let i=0; i<buckets; i++){
+        const slice = valid.slice(i*size, (i+1)*size);
+        const sum = slice.reduce((a,b)=>a+b, 0);
+        cum += sum;
+        arr.push({ label:'Bloque '+(i+1), value:cum });
+      }
+      monthlySeries = arr;
+      _monthlyIsFallback = true;
+    }
+  }
 
   // ── Serie 2: progreso del SETUP en el tiempo (curva trade-a-trade de los filtrados) ──
+  // Si hay fechas las uso para ordenar; si no, preservo el orden del CSV.
   const _setupRaw = (filtered || []).map(t => ({rr: parseRRSafe(t[RR_COL]), d: parseTradeDate(t)}))
-                    .filter(x => x.rr != null && x.d != null)
-                    .sort((a,b) => a.d - b.d);
+                    .filter(x => x.rr != null);
+  const _setupHasDates = _setupRaw.some(x => x.d != null);
+  if(_setupHasDates) _setupRaw.sort((a,b) => (a.d ? a.d.getTime() : 0) - (b.d ? b.d.getTime() : 0));
   let _scum = 0;
   const setupSeries = _setupRaw.map((x,i) => { _scum += x.rr; return { label:i+1, value:_scum }; });
 
@@ -6282,7 +6354,9 @@ function renderDAE(stats, filters, verdict, vclass, conf, score, filtered){
         <span style="font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:1.2px;color:${_monthlyEndVal>=0?'var(--green2)':'var(--red2)'};">${(_monthlyEndVal>=0?'+':'')+_monthlyEndVal.toFixed(1)}R</span>
       </div>
       <div style="font-size:8px;color:var(--t3);font-weight:600;letter-spacing:.5px;margin-bottom:6px;">
-        ${monthlySeries.length} ${monthlySeries.length===1?'mes':'meses'} · ${_monthlyRangeLbl} · CSV completo
+        ${_monthlyIsFallback
+          ? `${monthlySeries.length} bloques · ${allTrades.length} trades · CSV completo (sin fecha legible)`
+          : `${monthlySeries.length} ${monthlySeries.length===1?'mes':'meses'} · ${_monthlyRangeLbl} · CSV completo`}
       </div>
       ${buildLineChart(monthlySeries, {color:_monthlyColor, colorRgb:_monthlyRgb, id:'daeMonthly'})}
     </div>
