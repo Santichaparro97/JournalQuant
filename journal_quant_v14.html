@@ -6131,6 +6131,76 @@ function renderDAE(stats, filters, verdict, vclass, conf, score){
   const calmarFmt = calmar >= 99 ? '∞' : calmar.toFixed(2);
   const calmarColor = calmar>=2 ? 'var(--green2)' : calmar>=1 ? 'var(--amber2)' : 'var(--red2)';
 
+  // ── Radar / spider chart SciFi: visualiza las 6 métricas en un polígono ──
+  const buildRadarChart = (mets) => {
+    const cx = 100, cy = 105, R = 70;
+    const N = mets.length;
+    const ang = i => (-Math.PI/2) + (i * 2*Math.PI / N);
+    const pt  = (r, i) => [cx + r*Math.cos(ang(i)), cy + r*Math.sin(ang(i))];
+    const ring = (frac) => {
+      const arr = [];
+      for(let i=0;i<N;i++){ const [x,y]=pt(R*frac,i); arr.push(x.toFixed(1)+','+y.toFixed(1)); }
+      return arr.join(' ');
+    };
+    let axes='', dots='', labels='', dataPts=[];
+    for(let i=0;i<N;i++){
+      const [ex,ey] = pt(R, i);
+      axes += `<line x1="${cx}" y1="${cy}" x2="${ex.toFixed(1)}" y2="${ey.toFixed(1)}" stroke="rgba(0,212,255,.15)" stroke-width="0.8"/>`;
+      const norm = Math.max(0.04, Math.min(1, mets[i].norm));
+      const [dx,dy] = pt(R*norm, i);
+      dataPts.push(dx.toFixed(1)+','+dy.toFixed(1));
+      dots += `<circle cx="${dx.toFixed(1)}" cy="${dy.toFixed(1)}" r="3" fill="${mets[i].color||'#22f3ff'}" filter="url(#daeRadarGlow)"/>`;
+      const [lx,ly] = pt(R + 14, i);
+      const anchor = lx < cx - 4 ? 'end' : lx > cx + 4 ? 'start' : 'middle';
+      labels += `<text x="${lx.toFixed(1)}" y="${(ly-1).toFixed(1)}" text-anchor="${anchor}" font-family="ui-monospace,monospace" font-size="7" font-weight="800" fill="rgba(159,184,210,.85)" letter-spacing="1">${mets[i].label}</text>`;
+      labels += `<text x="${lx.toFixed(1)}" y="${(ly+9).toFixed(1)}" text-anchor="${anchor}" font-family="ui-monospace,monospace" font-size="9" font-weight="800" fill="${mets[i].color||'#22f3ff'}">${mets[i].value}</text>`;
+    }
+    return `
+      <svg viewBox="0 0 200 220" preserveAspectRatio="xMidYMid meet" style="width:100%;display:block;overflow:visible;">
+        <defs>
+          <filter id="daeRadarGlow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="2" result="b"/>
+            <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
+          <radialGradient id="daeRadarFill" cx="50%" cy="50%" r="60%">
+            <stop offset="0%" stop-color="rgba(34,243,255,.45)"/>
+            <stop offset="100%" stop-color="rgba(90,168,255,.06)"/>
+          </radialGradient>
+        </defs>
+        <polygon points="${ring(1.00)}" fill="none" stroke="rgba(0,212,255,.22)" stroke-width="0.9"/>
+        <polygon points="${ring(0.66)}" fill="none" stroke="rgba(0,212,255,.14)" stroke-width="0.7"/>
+        <polygon points="${ring(0.33)}" fill="none" stroke="rgba(0,212,255,.10)" stroke-width="0.6"/>
+        ${axes}
+        <polygon points="${dataPts.join(' ')}" fill="url(#daeRadarFill)" stroke="#22f3ff" stroke-width="1.6" filter="url(#daeRadarGlow)"/>
+        ${dots}
+        ${labels}
+      </svg>
+    `;
+  };
+
+  // Normalizaciones: cada métrica se mapea a 0..1, donde 1 = "muy bueno"
+  // (en MDD y MCL se invierte porque menor es mejor)
+  const radarMetrics = [
+    { label:'WR',     value: wr.toFixed(1)+'%',
+      norm:  Math.min(1, wr/100),
+      color: wr>=60?'#2ee69c':wr>=50?'#ffc24a':'#ff6480' },
+    { label:'RR',     value: (rrTotal>=0?'+':'')+rrTotal.toFixed(1)+'R',
+      norm:  Math.max(0, Math.min(1, (rrTotal + 5) / 25)),
+      color: rrTotal>=5?'#2ee69c':rrTotal>=0?'#ffc24a':'#ff6480' },
+    { label:'CALMAR', value: calmarFmt,
+      norm:  Math.min(1, Math.max(0, calmar/4)),
+      color: calmar>=2?'#2ee69c':calmar>=1?'#ffc24a':'#ff6480' },
+    { label:'EV',     value: (ev>=0?'+':'')+ev.toFixed(2)+'R',
+      norm:  Math.max(0, Math.min(1, (ev + 0.5) / 1.0)),
+      color: ev>=0.2?'#2ee69c':ev>=0?'#ffc24a':'#ff6480' },
+    { label:'MDD',    value: maxDD.toFixed(1)+'R',
+      norm:  1 - Math.min(1, maxDD / 20),
+      color: maxDD<5?'#2ee69c':maxDD<10?'#ffc24a':'#ff6480' },
+    { label:'MCL',    value: mcl,
+      norm:  1 - Math.min(1, mcl / 10),
+      color: mcl<=3?'#2ee69c':mcl<=5?'#ffc24a':'#ff6480' },
+  ];
+
   report.innerHTML = `
 
     <!-- ═══ BLOQUE 1: ESTADO DEL SISTEMA ═══ -->
@@ -6164,66 +6234,13 @@ function renderDAE(stats, filters, verdict, vclass, conf, score){
       </div>
     </div>
 
-    <!-- ═══ BLOQUE 2: CONTEXTO OPERATIVO ═══ -->
-    <div style="padding:11px 13px;border-bottom:1px solid var(--bd);">
-      <div style="font-size:7px;font-weight:800;letter-spacing:2.5px;text-transform:uppercase;color:var(--t3);margin-bottom:9px;">Contexto Operativo</div>
-
-      ${d.semana || d.dia || d.bias || d.wo ? `
-        <div style="display:flex;flex-direction:column;gap:0;">
-          ${d.semana ? metricRow('Semana', d.semana + (d.isWeek3?' ⚠':''),
-              d.isWeek3 ? aTag('Precaución') : gTag('OK')) : ''}
-          ${d.dia    ? metricRow('Día', d.dia.charAt(0).toUpperCase()+d.dia.slice(1),
-              d.isDayComplex ? aTag('Complejo') : gTag('Normal')) : ''}
-          ${d.bias   ? metricRow('Bias', d.bias, gTag('Activo')) : ''}
-          ${d.wo     ? metricRow('WO / DO', d.wo, gTag('Activo')) : ''}
-        </div>
-      ` : `<div style="color:var(--t3);font-size:9px;font-weight:600;text-align:center;padding:10px 0;line-height:1.7;">Seleccioná filtros de contexto<br>en el checklist</div>`}
-
-      <div style="margin-top:7px;padding:6px 10px;border-radius:4px;background:var(--s2);border:1px solid var(--bd);display:flex;justify-content:space-between;align-items:center;">
-        <span style="font-size:8px;font-weight:600;color:var(--t3);">Muestra analizada</span>
-        <span style="font-family:var(--mono);font-size:10px;font-weight:700;color:${total>=100?'var(--green2)':total>=30?'var(--amber2)':'var(--red2)'};">${total} trades</span>
+    <!-- ═══ BLOQUE 2: PERFORMANCE RADAR (sustituye Contexto Operativo) ═══ -->
+    <div style="padding:13px 13px 16px;">
+      <div style="font-size:7px;font-weight:800;letter-spacing:2.5px;text-transform:uppercase;color:var(--t3);margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;">
+        <span>Performance Radar</span>
+        <span style="font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:1.2px;color:${total>=100?'var(--green2)':total>=30?'var(--amber2)':'var(--red2)'};">${total} TRADES</span>
       </div>
-    </div>
-
-    <!-- ═══ BLOQUE 3: DECISIÓN FINAL ═══ -->
-    <div style="padding:11px 13px;">
-      <div style="font-size:7px;font-weight:800;letter-spacing:2.5px;text-transform:uppercase;color:var(--t3);margin-bottom:9px;">Decisión Final</div>
-
-      <!-- Decision box -->
-      <div style="border:1.5px solid ${dc.border};background:${dc.bg};border-radius:6px;padding:11px 14px;margin-bottom:8px;display:flex;align-items:center;gap:11px;">
-        <span style="font-size:20px;font-weight:900;color:${dc.color};flex-shrink:0;line-height:1;">${dc.icon}</span>
-        <div>
-          <div style="font-size:16px;font-weight:900;letter-spacing:.5px;color:${dc.color};text-transform:uppercase;line-height:1.1;">${d.decision}</div>
-          <div style="font-size:8px;font-weight:600;color:var(--t2);margin-top:4px;">${
-            d.decision==='OPERAR'         ? 'Condiciones óptimas · tamaño normal'
-          : d.decision==='ESCALAR'        ? 'Sistema en máximo rendimiento · tamaño aumentado'
-          : d.decision==='REDUCIR RIESGO' ? 'Condiciones parciales · reducir exposición'
-          :                                 'Sin edge confirmado · fuera del mercado'
-          }</div>
-        </div>
-      </div>
-
-      <!-- Risk + Confidence -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;">
-        <div style="background:var(--s2);border:1px solid var(--bd);border-radius:5px;padding:10px;text-align:center;">
-          <div style="font-size:7px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--t3);margin-bottom:5px;">Riesgo</div>
-          <div style="font-family:var(--mono);font-size:24px;font-weight:800;color:${riskColor};line-height:1;">${d.riskPct}%</div>
-          <div style="font-size:8px;font-weight:600;color:var(--t3);margin-top:3px;">${
-            d.riskPct===0 ? 'no arriesgar'
-          : d.riskPct===0.25 ? 'mínimo'
-          : d.riskPct===0.5 ? 'reducido'
-          : d.riskPct===1 ? 'normal'
-          : 'escalado'}</div>
-        </div>
-
-        <div style="background:var(--s2);border:1px solid var(--bd);border-radius:5px;padding:10px;text-align:center;">
-          <div style="font-size:7px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--t3);margin-bottom:5px;">Confianza</div>
-          <div style="font-size:16px;font-weight:900;color:${cc.color};line-height:1;margin-bottom:6px;">${d.confLabel}</div>
-          <div style="height:4px;background:var(--bd);border-radius:2px;overflow:hidden;">
-            <div style="height:100%;width:${cc.pct}%;background:${cc.color};border-radius:2px;transition:width .5s;"></div>
-          </div>
-        </div>
-      </div>
+      ${buildRadarChart(radarMetrics)}
     </div>
   `;
 }
