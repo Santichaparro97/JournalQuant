@@ -6203,16 +6203,18 @@ function renderDAE(stats, filters, verdict, vclass, conf, score, filtered){
     return null;
   };
 
-  // ── Serie 1: progreso MES A MES sobre TODO el CSV cargado ──
-  const allTrades = (typeof csvData !== 'undefined' && Array.isArray(csvData)) ? csvData : [];
+  // ── Serie 1: progreso MES A MES respetando los FILTROS del checklist ──
+  // Si el usuario marca solo "Enero" en el checklist, este gráfico mostrará
+  // únicamente los Eneros de los años cargados. Si no filtra meses, los muestra
+  // todos. Los datos vienen de `filtered`, que ya aplicó todos los filtros.
+  const _monthSource = (filtered && filtered.length) ? filtered
+                     : ((typeof csvData!=='undefined' && Array.isArray(csvData)) ? csvData : []);
   const _monthMap = new Map(); // 'YYYY-MM' → suma R del mes
-  let _monthlyDated = 0;
-  allTrades.forEach(t => {
+  _monthSource.forEach(t => {
     const rr = parseRRSafe(t[RR_COL]);
     if(rr == null) return;
     const d = parseTradeDate(t);
     if(!d) return;
-    _monthlyDated++;
     const k = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
     _monthMap.set(k, (_monthMap.get(k)||0) + rr);
   });
@@ -6222,8 +6224,8 @@ function renderDAE(stats, filters, verdict, vclass, conf, score, filtered){
   // Fallback: si no se pudo parsear fecha en ningún trade, agrupar en 12 bloques
   // preservando el orden del CSV. Así igual ves la curva acumulada del archivo.
   let _monthlyIsFallback = false;
-  if(monthlySeries.length < 2 && allTrades.length){
-    const valid = allTrades.map(t => parseRRSafe(t[RR_COL])).filter(v => v != null);
+  if(monthlySeries.length < 2 && _monthSource.length){
+    const valid = _monthSource.map(t => parseRRSafe(t[RR_COL])).filter(v => v != null);
     if(valid.length >= 2){
       const buckets = Math.min(12, valid.length);
       const size = Math.ceil(valid.length / buckets);
@@ -6240,6 +6242,31 @@ function renderDAE(stats, filters, verdict, vclass, conf, score, filtered){
     }
   }
 
+  // ── Ejes X del gráfico mensual ──
+  // ≥12 meses → marcas por año
+  // <12 meses → nombres de mes (Ene, Feb, Mar, …)
+  const _MES_SHORT = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  let monthlyXLabels = [];
+  if(!_monthlyIsFallback && monthlySeries.length){
+    if(monthlySeries.length >= 12){
+      // Marcas por año (primera aparición de cada año)
+      const seenYears = new Set();
+      monthlySeries.forEach((p, i) => {
+        const yy = p.label.slice(0,4);
+        if(!seenYears.has(yy)){
+          seenYears.add(yy);
+          monthlyXLabels.push({ index:i, text:yy });
+        }
+      });
+    } else {
+      // Nombres de mes
+      monthlyXLabels = monthlySeries.map((p, i) => {
+        const mm = parseInt(p.label.slice(5,7));
+        return { index:i, text: _MES_SHORT[mm-1] || p.label.slice(5,7) };
+      });
+    }
+  }
+
   // ── Serie 2: progreso del SETUP en el tiempo (curva trade-a-trade de los filtrados) ──
   // Si hay fechas las uso para ordenar; si no, preservo el orden del CSV.
   const _setupRaw = (filtered || []).map(t => ({rr: parseRRSafe(t[RR_COL]), d: parseTradeDate(t)}))
@@ -6252,7 +6279,10 @@ function renderDAE(stats, filters, verdict, vclass, conf, score, filtered){
   // ── Builder de gráfico de línea SciFi (path bezier + área glow) ──
   const buildLineChart = (series, opts) => {
     opts = opts || {};
-    const W = 280, H = 86, padL = 8, padR = 30, padT = 6, padB = 8;
+    const xLabels = opts.xLabels || [];
+    const W = 280, padL = 8, padR = 30, padT = 6;
+    const padB = xLabels.length ? 18 : 8;
+    const H = 86 + (xLabels.length ? 12 : 0);
     if(!series.length){
       return `<div style="text-align:center;color:var(--t3);font-size:9px;font-weight:600;padding:18px 0;letter-spacing:1px;">SIN DATOS SUFICIENTES</div>`;
     }
@@ -6283,8 +6313,26 @@ function renderDAE(stats, filters, verdict, vclass, conf, score, filtered){
     const id    = opts.id || ('lc'+Math.random().toString(36).slice(2,7));
     // Línea base (cero)
     const zeroY = padT + innerH * (1 - (0 - mn) / range);
+    // X labels (años o meses)
+    let xLabelsSvg = '';
+    let xTicksSvg  = '';
+    if(xLabels.length){
+      const labelY = baseY + 11;
+      const tickTop = baseY;
+      const tickBot = baseY + 3;
+      // Si hay más de ~10 etiquetas, intercalar para que no se encimen
+      const maxLabels = Math.floor(innerW / 24);
+      const step = xLabels.length > maxLabels ? Math.ceil(xLabels.length / maxLabels) : 1;
+      xLabels.forEach((lab, i) => {
+        if(lab.index < 0 || lab.index >= pts.length) return;
+        const x = pts[lab.index][0];
+        xTicksSvg += `<line x1="${x.toFixed(1)}" y1="${tickTop.toFixed(1)}" x2="${x.toFixed(1)}" y2="${tickBot.toFixed(1)}" stroke="rgba(159,184,210,.35)" stroke-width="0.7"/>`;
+        if(i % step !== 0) return;
+        xLabelsSvg += `<text x="${x.toFixed(1)}" y="${labelY.toFixed(1)}" text-anchor="middle" font-family="ui-monospace,monospace" font-size="7" font-weight="700" fill="rgba(159,184,210,.85)" letter-spacing=".5">${lab.text}</text>`;
+      });
+    }
     return `
-      <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="width:100%;height:90px;display:block;">
+      <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="width:100%;height:${H+4}px;display:block;">
         <defs>
           <linearGradient id="${id}fill" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stop-color="rgba(${rgb},.40)"/>
@@ -6300,6 +6348,8 @@ function renderDAE(stats, filters, verdict, vclass, conf, score, filtered){
         <path d="${path}" fill="none" stroke="${color}" stroke-width="1.6" filter="url(#${id}glow)"/>
         <circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="3" fill="${color}" filter="url(#${id}glow)"/>
         <text x="${(last[0]+5).toFixed(1)}" y="${(last[1]+3).toFixed(1)}" text-anchor="start" font-family="ui-monospace,monospace" font-size="9" font-weight="800" fill="${color}">${(lastV>=0?'+':'')+lastV.toFixed(1)}R</text>
+        ${xTicksSvg}
+        ${xLabelsSvg}
       </svg>
     `;
   };
@@ -6355,10 +6405,10 @@ function renderDAE(stats, filters, verdict, vclass, conf, score, filtered){
       </div>
       <div style="font-size:8px;color:var(--t3);font-weight:600;letter-spacing:.5px;margin-bottom:6px;">
         ${_monthlyIsFallback
-          ? `${monthlySeries.length} bloques · ${allTrades.length} trades · CSV completo (sin fecha legible)`
-          : `${monthlySeries.length} ${monthlySeries.length===1?'mes':'meses'} · ${_monthlyRangeLbl} · CSV completo`}
+          ? `${monthlySeries.length} bloques · ${_monthSource.length} trades · (sin fecha legible)`
+          : `${monthlySeries.length} ${monthlySeries.length===1?'mes':'meses'} · ${_monthlyRangeLbl} · respeta filtros del checklist`}
       </div>
-      ${buildLineChart(monthlySeries, {color:_monthlyColor, colorRgb:_monthlyRgb, id:'daeMonthly'})}
+      ${buildLineChart(monthlySeries, {color:_monthlyColor, colorRgb:_monthlyRgb, id:'daeMonthly', xLabels: monthlyXLabels})}
     </div>
 
     <!-- ═══ BLOQUE 3: PROGRESO DEL SETUP EN EL TIEMPO (filtrados) ═══ -->
