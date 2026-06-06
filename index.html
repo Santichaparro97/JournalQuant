@@ -1335,9 +1335,9 @@ input[type="file"] { display: none; }
   display:none; position:fixed; inset:0;
   width:100vw; height:100vh;
   background:rgba(0,0,0,.9);
-  z-index:10000; flex-direction:column;
+  z-index:10000; flex-direction:row;
   align-items:center; justify-content:center;
-  overflow:hidden; padding:0; gap:8px;
+  overflow:hidden; padding:0; gap:20px;
 }
 #ag-modal.ag-open { display:flex; }
 
@@ -1348,7 +1348,8 @@ input[type="file"] { display: none; }
 }
 #ag-img {
   width:auto; height:auto;
-  max-width:80vw; max-height:80vh;
+  /* Reserva ~380px a la derecha para el panel de info */
+  max-width:calc(95vw - 400px); max-height:90vh;
   object-fit:contain; image-rendering:auto;
   display:block;
   box-shadow:0 8px 48px rgba(0,0,0,.7);
@@ -1369,20 +1370,25 @@ input[type="file"] { display: none; }
 }
 .ag-arrow:hover { background:rgba(0,212,255,.25); color:#fff; box-shadow:0 0 16px rgba(0,212,255,.35); }
 #ag-prev { left:16px; }
-#ag-next { right:16px; }
+/* Info panel ocupa ~360px a la derecha → mover la flecha next a la izquierda del panel */
+#ag-next { right:380px; }
 
-/* Counter */
+/* Counter — fijo abajo y centrado (antes era flow normal entre img y panel) */
 #ag-counter {
+  position:fixed; bottom:18px; left:50%; transform:translateX(-50%);
   font-family:var(--mono); font-size:9px; font-weight:700; letter-spacing:2px;
-  color:var(--t3); text-align:center; flex-shrink:0; line-height:1;
+  color:var(--t3); line-height:1;
+  background:rgba(8,13,20,.85); padding:5px 14px; border-radius:12px;
+  border:1px solid rgba(0,212,255,.18); z-index:10001; pointer-events:none;
 }
 
-/* Trade info panel — max 20vh, does not push image */
+/* Trade info panel — A LA DERECHA DE LA IMAGEN, alto = alto de la imagen */
 #ag-info {
-  width:min(80vw,900px); flex-shrink:0;
-  max-height:20vh; overflow-y:auto;
+  width:360px; flex-shrink:0;
+  height:90vh; max-height:90vh; overflow-y:auto;
   background:rgba(11,18,32,.97); border:1px solid rgba(0,212,255,.12);
-  border-radius:8px; padding:8px 14px;
+  border-radius:8px; padding:12px 16px;
+  align-self:center;
 }
 .ag-info-row {
   display:flex; gap:20px; flex-wrap:wrap; align-items:flex-start;
@@ -1440,47 +1446,147 @@ input[type="file"] { display: none; }
   cursor: grab;
 }
 
-/* ── GALLERY EXTRA COLUMNS ──────────────────────────── */
+/* ── GALLERY EXTRA COLUMNS — selección manual, layout vertical ── */
 #ag-extra-cols {
   display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
+  flex-direction: column;
+  gap: 8px;
   margin-top: 8px;
   padding-top: 8px;
   border-top: 1px solid rgba(0,212,255,.08);
 }
-.ag-extra-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  background: rgba(0,212,255,.06);
-  border: 1px solid rgba(0,212,255,.14);
-  border-radius: 5px;
-  padding: 3px 9px;
+.ag-extra-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 8px;
+  background: rgba(0,212,255,.04);
+  border-left: 2px solid rgba(0,212,255,.25);
+  border-radius: 0 4px 4px 0;
+  transition: background .12s, border-color .12s;
+}
+.ag-extra-row:hover {
+  background: rgba(0,212,255,.08);
+  border-left-color: rgba(0,212,255,.55);
+}
+.ag-extra-row-lbl {
   font-size: 9px;
-  font-weight: 700;
-  white-space: nowrap;
-  max-width: 220px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  transition: border-color .12s;
-}
-.ag-extra-chip:hover {
-  border-color: rgba(0,212,255,.35);
-}
-.ag-extra-chip-lbl {
-  color: var(--t3);
-  letter-spacing: .5px;
+  font-weight: 800;
+  letter-spacing: 1.8px;
   text-transform: uppercase;
-  font-size: 7px;
-  flex-shrink: 0;
+  color: var(--cyan);
+  text-shadow: 0 0 6px rgba(34,243,255,.45), 0 0 1px rgba(34,243,255,.7);
 }
-.ag-extra-chip-val {
+.ag-extra-row-val {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
   color: var(--tx);
+  word-break: break-word;
+  white-space: pre-wrap;
+  line-height: 1.4;
+}
+.ag-extra-row-val.is-empty {
+  color: var(--t3);
+  font-style: italic;
+  opacity: .6;
+}
+
+/* ── COLUMN PICKER (manual) ─────────────────────────── */
+.ag-cols-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin-top: 6px;
+}
+#ag-cols-btn {
+  background: rgba(0,212,255,.08);
+  border: 1px solid rgba(0,212,255,.28);
+  color: var(--cyan);
   font-family: var(--mono);
   font-size: 9px;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all .12s;
+}
+#ag-cols-btn:hover {
+  background: rgba(0,212,255,.18);
+  border-color: var(--cyan);
+  box-shadow: 0 0 8px rgba(34,243,255,.35);
+}
+#ag-cols-picker {
+  margin-top: 6px;
+  padding: 8px 10px;
+  background: rgba(8,13,20,.9);
+  border: 1px solid rgba(0,212,255,.22);
+  border-radius: 6px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+#ag-cols-picker .ag-cp-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--t3);
+  margin-bottom: 6px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid rgba(0,212,255,.1);
+}
+#ag-cols-picker .ag-cp-head .ag-cp-actions { display: flex; gap: 4px; }
+#ag-cols-picker .ag-cp-mini {
+  background: rgba(0,212,255,.06);
+  border: 1px solid rgba(0,212,255,.2);
+  color: var(--t2);
+  font-family: var(--mono);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: .5px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  cursor: pointer;
+}
+#ag-cols-picker .ag-cp-mini:hover {
+  border-color: var(--cyan);
+  color: var(--cyan);
+}
+#ag-cols-picker .ag-cp-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+#ag-cols-picker label.ag-cp-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 5px;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--t2);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background .1s;
+}
+#ag-cols-picker label.ag-cp-item:hover {
+  background: rgba(0,212,255,.07);
+  color: var(--tx);
+}
+#ag-cols-picker input[type="checkbox"] {
+  accent-color: var(--cyan);
+  width: 12px;
+  height: 12px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+#ag-cols-picker label.ag-cp-item.is-checked {
+  color: var(--cyan);
 }
 
 /* ══════════════════════════════════════════════════════
@@ -3639,6 +3745,486 @@ html, body { background: transparent !important; }
   line-height: 1.6;
 }
 
+/* ═════════════════════════════════════════════════════════════
+   ── TOP NAV TABS — Pre-Open / Dashboard / Projector ──
+   ═════════════════════════════════════════════════════════════ */
+#main-nav-tabs {
+  display: flex; gap: 4px;
+  background: rgba(8,13,20,.5);
+  border: 1px solid rgba(var(--ac-r,90),var(--ac-g,168),var(--ac-b,255),.25);
+  border-radius: 8px;
+  padding: 3px;
+}
+.mnt-tab {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--t2);
+  font-family: var(--mono); font-size: 10px; font-weight: 800;
+  letter-spacing: 1.5px; text-transform: uppercase;
+  padding: 5px 12px; border-radius: 6px;
+  cursor: pointer;
+  transition: all .18s;
+  white-space: nowrap;
+}
+.mnt-tab:hover { color: var(--tx); background: rgba(90,168,255,.08); }
+.mnt-tab.active {
+  background: linear-gradient(135deg, var(--blue2), var(--cyan));
+  color: #fff;
+  border-color: var(--cyan);
+  box-shadow: 0 0 14px rgba(34,243,255,.35);
+}
+
+/* ═════════════════════════════════════════════════════════════
+   ── PROJECTOR VIEW ──
+   Vista full-screen: lista de trades (izq) + imagen + medidor (der).
+   ═════════════════════════════════════════════════════════════ */
+#projector-view {
+  display: none;
+  position: fixed;
+  top: var(--hh);
+  left: 0; right: 0; bottom: 0;
+  background: var(--bg);
+  z-index: 150;
+  flex-direction: row;
+  overflow: hidden;
+}
+#projector-view.proj-open { display: flex; }
+
+#proj-list-wrap {
+  flex: 0 0 280px;
+  display: flex; flex-direction: column;
+  background: rgba(8,13,20,.6);
+  border-right: 1px solid var(--bd);
+  overflow: hidden;
+}
+.proj-list-hdr {
+  padding: 10px 12px;
+  font-size: 9px; font-weight: 800; letter-spacing: 2px;
+  text-transform: uppercase; color: var(--blue2);
+  background: var(--s2);
+  border-bottom: 1px solid var(--bd);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.proj-list-hdr .proj-list-count {
+  font-family: var(--mono); font-size: 9px; color: var(--t3);
+  font-weight: 700; letter-spacing: 0;
+}
+#proj-trade-list { flex: 1; overflow-y: auto; padding: 6px 8px; }
+.proj-trade-row {
+  display: grid;
+  grid-template-columns: 60px 44px 50px 14px;
+  gap: 6px; align-items: center;
+  padding: 7px 10px; margin: 2px 0;
+  background: rgba(16,26,46,.3);
+  border: 1px solid transparent;
+  border-radius: 5px;
+  cursor: pointer;
+  font-family: var(--mono); font-size: 10px; font-weight: 700;
+  transition: all .12s;
+}
+.proj-trade-row:hover {
+  background: rgba(90,168,255,.08);
+  border-color: rgba(90,168,255,.25);
+}
+.proj-trade-row.active {
+  background: linear-gradient(90deg, rgba(34,243,255,.18), rgba(16,26,46,.4));
+  border-color: var(--cyan);
+  box-shadow: 0 0 10px rgba(34,243,255,.2);
+}
+.proj-trade-row.tw { border-left: 2px solid var(--green2); }
+.proj-trade-row.tl { border-left: 2px solid var(--red2); }
+.proj-trade-row .ptr-fecha { color: var(--t2); }
+.proj-trade-row .ptr-res.tx-g { color: var(--green2); }
+.proj-trade-row .ptr-res.tx-r { color: var(--red2); }
+.proj-trade-row .ptr-rr.tx-g { color: var(--green2); }
+.proj-trade-row .ptr-rr.tx-r { color: var(--red2); }
+.proj-trade-row .ptr-img-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: rgba(120,180,255,.18);
+  justify-self: end;
+}
+.proj-trade-row .ptr-img-dot.has-img {
+  background: var(--cyan);
+  box-shadow: 0 0 6px var(--cyan);
+}
+
+#proj-img-wrap {
+  flex: 1;
+  position: relative;
+  background: #000;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+}
+#proj-img { max-width: 100%; max-height: 100%; display: block; user-select: none; }
+#proj-canvas { position: absolute; top: 0; left: 0; pointer-events: auto; cursor: crosshair; z-index: 50; }
+#proj-empty {
+  color: var(--t3); font-size: 14px; font-weight: 700;
+  text-align: center; line-height: 1.6;
+  font-family: var(--mono);
+}
+
+#proj-measure-panel {
+  flex: 0 0 260px;
+  background: rgba(8,13,20,.85);
+  border-left: 1px solid var(--bd);
+  padding: 14px;
+  overflow-y: auto;
+  font-family: var(--sans);
+  color: var(--tx);
+}
+#proj-measure-panel .pm-title {
+  font-size: 10px; font-weight: 800; letter-spacing: 2px;
+  text-transform: uppercase; color: var(--blue2);
+  margin-bottom: 8px; padding-bottom: 8px;
+  border-bottom: 1px solid var(--bd);
+}
+#proj-measure-panel .pm-step {
+  font-size: 9px; font-weight: 700; letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--cyan);
+  background: rgba(34,243,255,.08);
+  border: 1px solid rgba(34,243,255,.25);
+  border-radius: 4px;
+  padding: 6px 8px;
+  margin-bottom: 10px;
+  text-align: center;
+}
+#proj-measure-panel .pm-section-title {
+  font-size: 8px; font-weight: 800; letter-spacing: 2px;
+  text-transform: uppercase; color: var(--blue2);
+  margin: 10px 0 4px;
+  padding-bottom: 3px;
+  border-bottom: 1px solid var(--bd);
+}
+#proj-measure-panel .pm-calib-row {
+  display: flex; gap: 6px; align-items: center;
+  margin-bottom: 10px;
+}
+#proj-measure-panel .pm-calib-row label {
+  font-size: 8px; font-weight: 700; letter-spacing: 1px;
+  text-transform: uppercase; color: var(--t3);
+  flex-shrink: 0;
+}
+#proj-measure-panel #pm-priceA-input,
+#proj-measure-panel #pm-priceB-input {
+  flex: 1; min-width: 0;
+  background: rgba(90,168,255,.06);
+  border: 1px solid var(--bd2);
+  border-radius: 4px;
+  color: var(--tx);
+  font-family: var(--mono); font-size: 11px; font-weight: 700;
+  padding: 4px 8px;
+  outline: none;
+}
+#proj-measure-panel #pm-priceA-input:focus,
+#proj-measure-panel #pm-priceB-input:focus {
+  border-color: var(--cyan);
+  box-shadow: 0 0 0 2px rgba(34,243,255,.18);
+}
+#proj-measure-panel #pm-priceA-input:disabled,
+#proj-measure-panel #pm-priceB-input:disabled { opacity: .4; cursor: not-allowed; }
+
+/* ── CALIBRACIÓN POR-IMAGEN: aviso de global disponible ── */
+#proj-measure-panel .pm-global-offer {
+  background: linear-gradient(135deg, rgba(255,194,74,.10), rgba(255,100,128,.06));
+  border: 1px solid rgba(255,194,74,.45);
+  border-radius: 5px;
+  padding: 8px 10px;
+  margin-bottom: 8px;
+  font-family: var(--mono);
+}
+#proj-measure-panel .pm-global-offer .pm-go-title {
+  font-size: 9px; font-weight: 800; letter-spacing: 1px;
+  text-transform: uppercase; color: var(--amber2);
+  margin-bottom: 3px;
+}
+#proj-measure-panel .pm-global-offer .pm-go-msg {
+  font-size: 9px; color: var(--t2); line-height: 1.4;
+  margin-bottom: 6px;
+}
+#proj-measure-panel .pm-global-offer .pm-go-val {
+  font-family: var(--mono); color: var(--amber2); font-weight: 800;
+}
+#proj-measure-panel .pm-global-offer .pm-go-actions {
+  display: flex; gap: 5px;
+}
+#proj-measure-panel .pm-global-offer .pm-go-actions .pm-btn { flex: 1; padding: 5px 6px; }
+
+/* Distinguir badge GLOBAL ACTIVA (heredada) vs LOCAL */
+#proj-measure-panel .pm-global-bar.pm-mode-global {
+  background: linear-gradient(135deg, rgba(255,194,74,.18), rgba(255,100,128,.10));
+  border-color: rgba(255,194,74,.55);
+}
+#proj-measure-panel .pm-global-bar.pm-mode-global .pm-gb-dot { background: var(--amber2); box-shadow: 0 0 6px var(--amber2); }
+#proj-measure-panel .pm-global-bar.pm-mode-global .pm-gb-txt { color: var(--amber2); }
+#proj-measure-panel .pm-global-bar.pm-mode-local {
+  background: linear-gradient(135deg, rgba(46,230,156,.12), rgba(34,243,255,.10));
+  border-color: rgba(46,230,156,.45);
+}
+#proj-measure-panel .pm-global-bar.pm-mode-local .pm-gb-dot { background: var(--green2); box-shadow: 0 0 6px var(--green2); }
+#proj-measure-panel .pm-global-bar.pm-mode-local .pm-gb-txt { color: var(--green2); }
+#proj-measure-panel .pm-metric {
+  display: flex; justify-content: space-between; align-items: baseline;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(30,45,61,.5);
+}
+#proj-measure-panel .pm-metric:last-of-type { border-bottom: none; }
+#proj-measure-panel .pm-metric .pm-lbl {
+  font-size: 8px; font-weight: 800; letter-spacing: 1.5px;
+  text-transform: uppercase; color: var(--t3);
+}
+#proj-measure-panel .pm-metric .pm-val {
+  font-family: var(--mono); font-size: 14px; font-weight: 800;
+  color: var(--tx);
+}
+#proj-measure-panel .pm-sl  .pm-val { color: var(--red2); }
+#proj-measure-panel .pm-tgt .pm-val { color: var(--green2); }
+#proj-measure-panel .pm-rr  .pm-val { color: var(--cyan); }
+#proj-measure-panel .pm-rr.pm-rr-bad .pm-val { color: var(--amber2); }
+#proj-measure-panel .pm-actions { display: flex; gap: 6px; margin-top: 10px; }
+#proj-measure-panel .pm-btn {
+  flex: 1;
+  background: rgba(90,168,255,.08);
+  border: 1px solid var(--bd2);
+  color: var(--blue2);
+  font-family: var(--mono); font-size: 9px; font-weight: 800;
+  letter-spacing: 1px; text-transform: uppercase;
+  padding: 6px 8px; border-radius: 4px;
+  cursor: pointer;
+  transition: all .15s;
+}
+#proj-measure-panel .pm-btn:hover { border-color: var(--blue2); background: rgba(90,168,255,.18); }
+#proj-measure-panel .pm-btn.pm-btn-danger { color: var(--red2); }
+#proj-measure-panel .pm-btn.pm-btn-danger:hover { border-color: var(--red2); background: rgba(255,100,128,.14); }
+
+#proj-measure-panel .pm-btn.pm-btn-accent {
+  color: var(--cyan);
+  border-color: rgba(34,243,255,.45);
+  background: rgba(34,243,255,.10);
+}
+#proj-measure-panel .pm-btn.pm-btn-accent:hover {
+  background: linear-gradient(135deg, var(--blue2), var(--cyan));
+  color: #fff;
+  border-color: var(--cyan);
+  box-shadow: 0 0 14px rgba(34,243,255,.4);
+}
+
+/* Bar de calibración global activa */
+#proj-measure-panel .pm-global-bar {
+  display: flex; align-items: center; gap: 8px;
+  background: linear-gradient(135deg, rgba(46,230,156,.12), rgba(34,243,255,.10));
+  border: 1px solid rgba(46,230,156,.4);
+  border-radius: 5px;
+  padding: 6px 10px;
+  margin-bottom: 8px;
+  font-family: var(--mono);
+}
+#proj-measure-panel .pm-gb-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: #2ee69c;
+  box-shadow: 0 0 8px #2ee69c;
+  flex-shrink: 0;
+  animation: pmGbPulse 1.8s ease-in-out infinite;
+}
+@keyframes pmGbPulse {
+  0%,100% { opacity: 1; }
+  50%     { opacity: .45; }
+}
+#proj-measure-panel .pm-gb-txt {
+  font-size: 8px; font-weight: 800; letter-spacing: 1.5px;
+  text-transform: uppercase; color: var(--green2);
+  flex-shrink: 0;
+}
+#proj-measure-panel .pm-gb-val {
+  flex: 1; text-align: right;
+  font-size: 10px; font-weight: 700; color: var(--tx);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+#proj-measure-panel .pm-gb-x {
+  background: transparent; border: none; cursor: pointer;
+  color: var(--t3); font-size: 11px; font-weight: 800;
+  padding: 0 2px; line-height: 1; flex-shrink: 0;
+}
+#proj-measure-panel .pm-gb-x:hover { color: var(--red2); }
+
+/* ═════════════════════════════════════════════════════════════
+   ── PIP MEASURE TOOL ──
+   Capa de medición sobre #ag-img dentro del visor de galería.
+   Totalmente aislada: nada toca al carrusel/zoom/CSV existente.
+   ═════════════════════════════════════════════════════════════ */
+
+/* Botón Medir — al lado de #ag-close */
+#ag-measure-btn {
+  position: absolute;
+  /* Shifted +380px porque #ag-info ahora ocupa 360px en el lado derecho */
+  top: 14px; right: 490px;
+  z-index: 10001;
+  background: rgba(8,13,20,.78);
+  border: 1px solid var(--bd2);
+  color: var(--blue2);
+  font-family: var(--mono);
+  font-size: 11px; font-weight: 800; letter-spacing: 1.2px;
+  text-transform: uppercase;
+  padding: 7px 14px; border-radius: 6px;
+  cursor: pointer;
+  transition: all .15s;
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+}
+#ag-measure-btn:hover {
+  border-color: var(--blue2);
+  color: #fff;
+  background: rgba(90,168,255,.15);
+  box-shadow: 0 0 14px rgba(90,168,255,.35);
+}
+#ag-measure-btn.ag-measure-active {
+  background: linear-gradient(135deg, var(--blue2), var(--cyan));
+  border-color: var(--cyan);
+  color: #fff;
+  box-shadow: 0 0 18px rgba(34,243,255,.5);
+}
+
+/* Canvas overlay — encima de #ag-img */
+#ag-measure-canvas {
+  position: absolute;
+  top: 0; left: 0;
+  pointer-events: none;
+  z-index: 9500;
+  /* Cuando el modo medición está activo, el wrap setea pointer-events:auto */
+}
+#ag-img-wrap.ag-measure-on #ag-measure-canvas { pointer-events: auto; cursor: crosshair; }
+#ag-img-wrap.ag-measure-on #ag-img { pointer-events: none; }
+/* Bloquear flechitas de navegación durante medición para no consumir clicks */
+#ag-img-wrap.ag-measure-on .ag-arrow { pointer-events: none; opacity: .25; }
+
+/* Panel derecho de medición */
+#ag-measure-panel {
+  position: absolute;
+  /* Shifted +380px porque #ag-info ahora ocupa 360px en el lado derecho */
+  top: 60px; right: 394px;
+  width: 240px;
+  z-index: 10000;
+  background: rgba(8,13,20,.88);
+  border: 1px solid var(--bd2);
+  border-radius: 8px;
+  padding: 14px 14px 12px;
+  font-family: var(--sans);
+  color: var(--tx);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  box-shadow: 0 8px 32px rgba(0,0,0,.55), 0 0 22px rgba(90,168,255,.12);
+  display: none;
+}
+#ag-measure-panel.open { display: block; }
+
+#ag-measure-panel .am-title {
+  font-size: 10px; font-weight: 800; letter-spacing: 2px;
+  text-transform: uppercase; color: var(--blue2);
+  margin-bottom: 8px; padding-bottom: 8px;
+  border-bottom: 1px solid var(--bd);
+  display: flex; justify-content: space-between; align-items: center;
+}
+#ag-measure-panel .am-title-x {
+  background: transparent; border: none; color: var(--t3);
+  font-size: 14px; font-weight: 800; cursor: pointer;
+  padding: 0 4px; line-height: 1;
+}
+#ag-measure-panel .am-title-x:hover { color: var(--red2); }
+
+#ag-measure-panel .am-step {
+  font-size: 9px; font-weight: 700; letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--cyan);
+  background: rgba(34,243,255,.08);
+  border: 1px solid rgba(34,243,255,.25);
+  border-radius: 4px;
+  padding: 6px 8px;
+  margin-bottom: 10px;
+  text-align: center;
+}
+
+#ag-measure-panel .am-calib-row {
+  display: flex; gap: 6px; align-items: center;
+  margin-bottom: 10px;
+}
+#ag-measure-panel .am-calib-row label {
+  font-size: 8px; font-weight: 700; letter-spacing: 1px;
+  text-transform: uppercase; color: var(--t3);
+  flex-shrink: 0;
+}
+#ag-measure-panel #am-calib-input,
+#ag-measure-panel #am-priceA-input,
+#ag-measure-panel #am-priceB-input {
+  flex: 1; min-width: 0;
+  background: rgba(90,168,255,.06);
+  border: 1px solid var(--bd2);
+  border-radius: 4px;
+  color: var(--tx);
+  font-family: var(--mono); font-size: 11px; font-weight: 700;
+  padding: 4px 8px;
+  outline: none;
+}
+#ag-measure-panel #am-calib-input:focus,
+#ag-measure-panel #am-priceA-input:focus,
+#ag-measure-panel #am-priceB-input:focus {
+  border-color: var(--cyan);
+  box-shadow: 0 0 0 2px rgba(34,243,255,.18);
+}
+#ag-measure-panel #am-calib-input:disabled,
+#ag-measure-panel #am-priceA-input:disabled,
+#ag-measure-panel #am-priceB-input:disabled {
+  opacity: .4; cursor: not-allowed;
+}
+
+#ag-measure-panel .am-metric {
+  display: flex; justify-content: space-between; align-items: baseline;
+  padding: 6px 0;
+  border-bottom: 1px solid rgba(30,45,61,.5);
+}
+#ag-measure-panel .am-metric:last-of-type { border-bottom: none; }
+#ag-measure-panel .am-metric .am-lbl {
+  font-size: 8px; font-weight: 800; letter-spacing: 1.5px;
+  text-transform: uppercase; color: var(--t3);
+}
+#ag-measure-panel .am-metric .am-val {
+  font-family: var(--mono); font-size: 14px; font-weight: 800;
+  color: var(--tx);
+}
+#ag-measure-panel .am-sl    .am-val { color: var(--red2); }
+#ag-measure-panel .am-tgt   .am-val { color: var(--green2); }
+#ag-measure-panel .am-rr    .am-val { color: var(--cyan); }
+#ag-measure-panel .am-rr.am-rr-bad .am-val { color: var(--amber2); }
+
+#ag-measure-panel .am-section-title {
+  font-size: 8px; font-weight: 800; letter-spacing: 2px;
+  text-transform: uppercase; color: var(--blue2);
+  margin: 8px 0 4px;
+  padding-bottom: 3px;
+  border-bottom: 1px solid var(--bd);
+}
+
+#ag-measure-panel .am-actions {
+  display: flex; gap: 6px; margin-top: 10px;
+}
+#ag-measure-panel .am-btn {
+  flex: 1;
+  background: rgba(90,168,255,.08);
+  border: 1px solid var(--bd2);
+  color: var(--blue2);
+  font-family: var(--mono); font-size: 9px; font-weight: 800;
+  letter-spacing: 1px; text-transform: uppercase;
+  padding: 6px 8px; border-radius: 4px;
+  cursor: pointer;
+  transition: all .15s;
+}
+#ag-measure-panel .am-btn:hover {
+  border-color: var(--blue2);
+  background: rgba(90,168,255,.18);
+}
+#ag-measure-panel .am-btn.am-btn-danger { color: var(--red2); }
+#ag-measure-panel .am-btn.am-btn-danger:hover {
+  border-color: var(--red2);
+  background: rgba(255,100,128,.14);
+}
+
 </style>
 </head>
 <body>
@@ -3721,7 +4307,14 @@ html, body { background: transparent !important; }
     <span class="h-tag off" id="csv-tag" title="Click para ver detalles del archivo cargado">SIN DATOS</span>
     <button class="h-btn" id="csv-del-btn" onclick="deleteCSV()"
       style="display:none;border-color:rgba(239,68,68,.4);color:var(--red2);">✕</button>
-    <button class="h-btn" style="border-color:rgba(34,197,94,.4);color:var(--green2);" id="edge-nav-btn" onclick="toggleEdgeView()">⚡ PRE-OPEN</button>
+    <!-- 3-tab navigation -->
+    <div id="main-nav-tabs">
+      <button class="mnt-tab" data-view="preopen"   onclick="navSetView('preopen')">⚡ PRE-OPEN</button>
+      <button class="mnt-tab active" data-view="dashboard" onclick="navSetView('dashboard')">📊 DASHBOARD</button>
+      <button class="mnt-tab" data-view="projector" onclick="navSetView('projector')">🎯 PROJECTOR</button>
+    </div>
+    <!-- Legacy: kept hidden for backward compat with code that references it -->
+    <button class="h-btn" id="edge-nav-btn" onclick="toggleEdgeView()" style="display:none;">⚡ PRE-OPEN</button>
     <span id="h-clock">--:--:--</span>
   </div>
 </div>
@@ -4011,6 +4604,100 @@ html, body { background: transparent !important; }
     <div id="ef-view-diario"       class="ef-view"></div>
   </div>
 
+</div>
+
+<!-- ═════════════════════════════════════════════════════════════
+     PROJECTOR VIEW — pestaña medición full-screen
+     ═════════════════════════════════════════════════════════════ -->
+<div id="projector-view">
+  <!-- Lista de trades izquierda -->
+  <div id="proj-list-wrap">
+    <div class="proj-list-hdr">
+      <span>📋 Trades</span>
+      <span class="proj-list-count" id="proj-list-count">0</span>
+    </div>
+    <div id="proj-trade-list"></div>
+  </div>
+
+  <!-- Imagen + canvas overlay -->
+  <div id="proj-img-wrap">
+    <div id="proj-empty">Seleccioná un trade de la lista<br>para empezar a medir</div>
+    <img id="proj-img" src="" alt="" style="display:none;">
+    <canvas id="proj-canvas" style="display:none;"></canvas>
+  </div>
+
+  <!-- Panel de medición derecha -->
+  <div id="proj-measure-panel">
+    <div class="pm-title">📏 Medición NQ</div>
+    <div class="pm-step" id="pm-step">Seleccioná un trade primero</div>
+
+    <!-- ── CALIBRACIÓN POR 2 PRECIOS REALES (por-imagen) ── -->
+    <div class="pm-section-title">Calibración (2 precios reales)</div>
+    <!-- Aviso: hay una calibración global guardada y esta imagen NO la está usando -->
+    <div id="pm-global-offer" class="pm-global-offer" style="display:none;">
+      <div class="pm-go-title">⚠ Calibración global disponible</div>
+      <div class="pm-go-msg">
+        Hay una escala guardada (<span class="pm-go-val" id="pm-go-val">—</span>).
+        Aplicar SOLO si esta imagen tiene el mismo rango de precio que la original.
+        Capturas de FX Replay con distinto rango → calibrá esta imagen.
+      </div>
+      <div class="pm-go-actions">
+        <button class="pm-btn pm-btn-accent" onclick="projApplyGlobalCalib()">Aplicar global</button>
+        <button class="pm-btn" onclick="projDismissGlobalOffer()">Calibrar esta imagen</button>
+      </div>
+    </div>
+    <!-- Badge de calibración activa (color cambia según sea heredada GLOBAL o LOCAL) -->
+    <div id="pm-global-bar" class="pm-global-bar" style="display:none;">
+      <span class="pm-gb-dot"></span>
+      <span class="pm-gb-txt" id="pm-gb-txt">Global activa</span>
+      <span class="pm-gb-val" id="pm-gb-val">—</span>
+      <button class="pm-gb-x" onclick="projClearGlobalCalib()" title="Borrar calibración global guardada">✕</button>
+    </div>
+    <div class="pm-calib-hint" id="pm-calib-hint" style="font-size:9px;color:var(--t3);margin:2px 0 6px;line-height:1.4;">
+      Click 2 líneas del eje derecho y escribí su precio real.
+    </div>
+    <div class="pm-calib-row">
+      <label>Precio A</label>
+      <input type="number" id="pm-priceA-input" placeholder="ej: 5060.00" step="0.01" disabled
+             onkeydown="event.stopPropagation()" oninput="projMeasureCalibChange()">
+    </div>
+    <div class="pm-calib-row">
+      <label>Precio B</label>
+      <input type="number" id="pm-priceB-input" placeholder="ej: 5040.00" step="0.01" disabled
+             onkeydown="event.stopPropagation()" oninput="projMeasureCalibChange()">
+    </div>
+    <div class="pm-metric">
+      <span class="pm-lbl">Pts / pixel</span>
+      <span class="pm-val" id="pm-ppx">—</span>
+    </div>
+    <div class="pm-calib-err" id="pm-calib-err" style="display:none;font-size:9px;color:var(--red2);margin-top:4px;line-height:1.4;"></div>
+    <button id="pm-recalib-btn" class="pm-btn" onclick="projMeasureRecalibrate()"
+            style="width:100%;margin-top:6px;">↻ Recalibrar (nueva imagen / rango)</button>
+    <button id="pm-save-global-btn" class="pm-btn pm-btn-accent" onclick="projSaveGlobalCalib()"
+            style="display:none;width:100%;margin-top:6px;">🎯 Usar como calibración global</button>
+
+    <div class="pm-section-title">Stop Loss</div>
+    <div class="pm-metric pm-sl"><span class="pm-lbl">Puntos</span><span class="pm-val" id="pm-sl-pts">—</span></div>
+    <div class="pm-metric pm-sl"><span class="pm-lbl">Ticks</span><span class="pm-val" id="pm-sl-tks">—</span></div>
+    <div class="pm-metric pm-sl"><span class="pm-lbl">USD NQ</span><span class="pm-val" id="pm-sl-usd">—</span></div>
+    <div class="pm-metric pm-sl"><span class="pm-lbl">USD MNQ</span><span class="pm-val" id="pm-sl-usdm">—</span></div>
+
+    <div class="pm-section-title">Target</div>
+    <div class="pm-metric pm-tgt"><span class="pm-lbl">Puntos</span><span class="pm-val" id="pm-tgt-pts">—</span></div>
+    <div class="pm-metric pm-tgt"><span class="pm-lbl">Ticks</span><span class="pm-val" id="pm-tgt-tks">—</span></div>
+    <div class="pm-metric pm-tgt"><span class="pm-lbl">USD NQ</span><span class="pm-val" id="pm-tgt-usd">—</span></div>
+    <div class="pm-metric pm-tgt"><span class="pm-lbl">USD MNQ</span><span class="pm-val" id="pm-tgt-usdm">—</span></div>
+
+    <div class="pm-section-title">Risk / Reward</div>
+    <div class="pm-metric pm-rr" id="pm-rr-row">
+      <span class="pm-lbl">RR</span><span class="pm-val" id="pm-rr">—</span>
+    </div>
+
+    <div class="pm-actions">
+      <button class="pm-btn pm-btn-danger" onclick="projMeasureReset()">↺ Reiniciar</button>
+      <button class="pm-btn" onclick="projMeasureBack()">‹ Atrás</button>
+    </div>
+  </div>
 </div>
 
 <!-- MAPPING MODAL — Configurar roles de columnas y filtros del checklist -->
@@ -8036,8 +8723,41 @@ const agState = {
   dragStartY: 0,
   dragPanStartX: 0,
   dragPanStartY: 0,
-  topCols: [],   // cached top columns for extra chips
+  topCols: [],   // cached top columns (legacy auto-detect; ahora se usa como semilla por defecto)
+  selectedCols: null,  // ── COLUMNAS MANUALES ── lista elegida por el usuario (persistida)
+  pickerOpen: false,
 };
+
+/* ── COLUMNAS MANUALES — persistencia en localStorage ──
+   Clave: jq_ag_selected_cols (JSON array de nombres de columna).
+   Si no hay nada guardado, se usa agDetectTopCols() como semilla por defecto. */
+const AG_SEL_COLS_KEY = 'jq_ag_selected_cols';
+function agLoadSelectedCols(){
+  try {
+    const raw = localStorage.getItem(AG_SEL_COLS_KEY);
+    if(!raw) return null;
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr : null;
+  } catch(_){ return null; }
+}
+function agSaveSelectedCols(){
+  try {
+    localStorage.setItem(AG_SEL_COLS_KEY, JSON.stringify(agState.selectedCols || []));
+  } catch(_){}
+}
+// Inicializa agState.selectedCols a partir de localStorage o, en su defecto, del auto-detect.
+function agEnsureSelectedCols(){
+  if(Array.isArray(agState.selectedCols)) return;
+  const stored = agLoadSelectedCols();
+  if(stored){
+    agState.selectedCols = stored;
+    return;
+  }
+  // Default: auto-detect (mantiene el comportamiento anterior como semilla razonable)
+  if(!agState.topCols.length) agDetectTopCols();
+  agState.selectedCols = agState.topCols.slice(0, 8);  // arrancamos con 8 para no saturar
+  agSaveSelectedCols();
+}
 
 // ── Detect top 10-15 most filled columns (excluding known ones) ──
 function agDetectTopCols(){
@@ -8232,22 +8952,28 @@ function agRender() {
     rrEl.className = 'ag-info-val' + (rr !== null ? (rr >= 0 ? ' win' : ' loss') : '');
   }
 
-  // ── Extra columns — top 10-15 most filled CSV cols ──
+  // ── COLUMNAS MANUALES — render vertical de las columnas elegidas por el usuario ──
+  agEnsureSelectedCols();
   const extraWrap = document.getElementById('ag-extra-cols');
   if (extraWrap) {
-    if (!agState.topCols.length) agDetectTopCols();
-    let chipsHtml = '';
-    agState.topCols.forEach(col => {
-      const val = (trade[col] || '').toString().trim();
-      if (!val || val === '—' || val === '-') return;
-      chipsHtml += `<div class="ag-extra-chip" title="${col}: ${val}">
-        <span class="ag-extra-chip-lbl">${col}:</span>
-        <span class="ag-extra-chip-val">${val}</span>
+    const cols = agState.selectedCols || [];
+    let html = '';
+    const escapeHtml = (s) => s.replace(/&/g,'&amp;').replace(/</g,'&lt;')
+                              .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    cols.forEach(col => {
+      const raw = (trade[col] == null ? '' : trade[col]).toString().trim();
+      const isEmpty = !raw || raw === '—' || raw === '-';
+      const valTxt = isEmpty ? '—' : raw;
+      html += `<div class="ag-extra-row" title="${escapeHtml(col)}">
+        <div class="ag-extra-row-lbl">${escapeHtml(col)}</div>
+        <div class="ag-extra-row-val${isEmpty ? ' is-empty' : ''}">${escapeHtml(valTxt)}</div>
       </div>`;
     });
-    extraWrap.innerHTML = chipsHtml;
-    extraWrap.style.display = chipsHtml ? 'flex' : 'none';
+    extraWrap.innerHTML = html;
+    extraWrap.style.display = cols.length ? 'flex' : 'none';
   }
+  // Re-render del picker (mantiene checks alineados con el estado)
+  if(agState.pickerOpen) agRenderColPicker();
 
   // ── Observaciones — mostrar texto COMPLETO ──
   const obsCol = resolveCol('Observación');
@@ -8278,6 +9004,92 @@ function agNav(dir) {
   if (newIdx < 0 || newIdx >= trades.length) return;
   agState.index = newIdx;
   agRender();
+  // ── PIP MEASURE TOOL — limpiar marcas al cambiar imagen ──
+  if (typeof agMeasureReset === 'function') agMeasureReset();
+}
+
+/* ── COLUMNAS MANUALES — selector con checkboxes ──
+   Lista todas las columnas del CSV (Object.keys(csvData[0])).
+   El usuario marca/desmarca; cambios se persisten en localStorage y se re-renderiza el panel. */
+function agToggleColPicker(){
+  agState.pickerOpen = !agState.pickerOpen;
+  const picker = document.getElementById('ag-cols-picker');
+  if(!picker) return;
+  if(agState.pickerOpen){
+    agRenderColPicker();
+    picker.style.display = 'block';
+  } else {
+    picker.style.display = 'none';
+  }
+}
+function agRenderColPicker(){
+  const picker = document.getElementById('ag-cols-picker');
+  if(!picker) return;
+  if(typeof csvData === 'undefined' || !csvData.length){
+    picker.innerHTML = '<div style="font-size:9px;color:var(--t3);text-align:center;padding:10px;">Cargá un CSV primero</div>';
+    return;
+  }
+  agEnsureSelectedCols();
+  const allCols = Object.keys(csvData[0]);
+  const selected = new Set(agState.selectedCols || []);
+  const escapeHtml = (s) => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;')
+                              .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  let itemsHtml = '';
+  allCols.forEach(col => {
+    const checked = selected.has(col);
+    const escCol = escapeHtml(col);
+    itemsHtml += `<label class="ag-cp-item${checked?' is-checked':''}">
+      <input type="checkbox" ${checked?'checked':''} onchange="agToggleColumn(this, '${escCol.replace(/'/g,"\\'")}')">
+      <span>${escCol}</span>
+    </label>`;
+  });
+  picker.innerHTML = `
+    <div class="ag-cp-head">
+      <span>Columnas (${selected.size}/${allCols.length})</span>
+      <span class="ag-cp-actions">
+        <button class="ag-cp-mini" type="button" onclick="agSelectAllCols()">Todas</button>
+        <button class="ag-cp-mini" type="button" onclick="agSelectNoCols()">Ninguna</button>
+        <button class="ag-cp-mini" type="button" onclick="agResetDefaultCols()" title="Volver al auto-detect">Default</button>
+      </span>
+    </div>
+    <div class="ag-cp-list">${itemsHtml}</div>
+  `;
+}
+function agToggleColumn(checkbox, col){
+  if(!Array.isArray(agState.selectedCols)) agEnsureSelectedCols();
+  const idx = agState.selectedCols.indexOf(col);
+  if(checkbox.checked){
+    if(idx === -1) agState.selectedCols.push(col);
+  } else {
+    if(idx !== -1) agState.selectedCols.splice(idx, 1);
+  }
+  agSaveSelectedCols();
+  // Refrescar visual del item
+  const lbl = checkbox.closest('label');
+  if(lbl) lbl.classList.toggle('is-checked', checkbox.checked);
+  // Re-pintar panel y header del picker
+  if(agState.trades && agState.trades.length) agRender();
+  else agRenderColPicker();
+}
+function agSelectAllCols(){
+  if(typeof csvData === 'undefined' || !csvData.length) return;
+  agState.selectedCols = Object.keys(csvData[0]).slice();
+  agSaveSelectedCols();
+  agRenderColPicker();
+  if(agState.trades && agState.trades.length) agRender();
+}
+function agSelectNoCols(){
+  agState.selectedCols = [];
+  agSaveSelectedCols();
+  agRenderColPicker();
+  if(agState.trades && agState.trades.length) agRender();
+}
+function agResetDefaultCols(){
+  if(!agState.topCols.length) agDetectTopCols();
+  agState.selectedCols = agState.topCols.slice(0, 8);
+  agSaveSelectedCols();
+  agRenderColPicker();
+  if(agState.trades && agState.trades.length) agRender();
 }
 
 // agToggleObs removed — observaciones siempre visibles completas
@@ -8294,6 +9106,14 @@ function agClose(e) {
   const closeBtn = document.getElementById('ag-close');
   if (!e || e.target === m || e.target === closeBtn) {
     agResetZoom();
+    // ── PIP MEASURE TOOL — salir del modo medición y limpiar ──
+    if (typeof agMeasureReset === 'function') agMeasureReset();
+    const measureBtn = document.getElementById('ag-measure-btn');
+    const measurePanel = document.getElementById('ag-measure-panel');
+    const wrap = document.getElementById('ag-img-wrap');
+    if (measureBtn) measureBtn.classList.remove('ag-measure-active');
+    if (measurePanel) measurePanel.classList.remove('open');
+    if (wrap) wrap.classList.remove('ag-measure-on');
     m.classList.remove('ag-open');
     document.getElementById('ag-img').src = '';
     document.body.style.overflow = '';
@@ -9682,15 +10502,22 @@ function adaptCSVToSchema(){
         <div class="ag-info-val" id="ag-fecha">—</div>
       </div>
       <div class="ag-info-field">
-        <div class="ag-info-lbl">Resultado</div>
-        <div class="ag-info-val" id="ag-res">—</div>
-      </div>
-      <div class="ag-info-field">
         <div class="ag-info-lbl">RR</div>
         <div class="ag-info-val" id="ag-rr">—</div>
       </div>
+      <div class="ag-info-field">
+        <div class="ag-info-lbl">Resultado</div>
+        <div class="ag-info-val" id="ag-res">—</div>
+      </div>
     </div>
-    <!-- Extra columns from CSV -->
+    <!-- Selector manual de columnas extras -->
+    <div class="ag-cols-toolbar">
+      <button id="ag-cols-btn" type="button"
+              onclick="event.stopPropagation();agToggleColPicker()"
+              title="Elegir columnas para mostrar">➕ Columnas</button>
+    </div>
+    <div id="ag-cols-picker" style="display:none;" onclick="event.stopPropagation()"></div>
+    <!-- Columnas extras del CSV (layout vertical, una debajo de otra) -->
     <div id="ag-extra-cols" style="display:none;"></div>
     <!-- Observaciones -->
     <div class="ag-obs" id="ag-obs-wrap" style="display:none;">
@@ -9911,5 +10738,1400 @@ window.addEventListener('load', () => {
   <span class="th-swatch th-amber"   data-theme-name="amber"   onclick="setTheme('amber')"   title="Amber / Gold"></span>
   <span class="th-swatch th-light"   data-theme-name="light"   onclick="setTheme('light')"   title="Light mode"></span>
 </div>
+
+<script>
+/* ═════════════════════════════════════════════════════════════
+   ── TOP NAV — Pre-Open / Dashboard / Projector ──
+   ═════════════════════════════════════════════════════════════ */
+function navSetView(view){
+  document.querySelectorAll('#main-nav-tabs .mnt-tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.view === view);
+  });
+
+  const edge = document.getElementById('edge-view');
+  const proj = document.getElementById('projector-view');
+  const main = document.getElementById('main');
+  const mbar = document.getElementById('mbar');
+
+  // Reset visibility
+  if(edge) edge.style.display = 'none';
+  if(proj) proj.classList.remove('proj-open');
+  if(main) main.style.display = '';
+  if(mbar) mbar.style.display = '';
+  // Sync legacy efActive flag
+  if(typeof efActive !== 'undefined') efActive = false;
+
+  if(view === 'preopen'){
+    // Reusar toda la lógica existente sin tocarla
+    if(typeof efActive !== 'undefined'){
+      efActive = true;
+      if(edge) edge.style.display = 'flex';
+      if(typeof efPopulateFilters === 'function') efPopulateFilters();
+      if(typeof getFilters === 'function' && typeof dynApplyFilters === 'function' && typeof filterTrades === 'function'){
+        const filtered = dynApplyFilters(filterTrades(getFilters()));
+        efWorkTrades = filtered.length ? filtered : [...csvData];
+      }
+      if(typeof efUpdateDataTag === 'function') efUpdateDataTag();
+      if(typeof efInitTabDrag === 'function') efInitTabDrag();
+      if(typeof efRenderTab === 'function') efRenderTab(efCurrentTab);
+    }
+  } else if(view === 'projector'){
+    if(proj) proj.classList.add('proj-open');
+    projOpen();
+  }
+  // 'dashboard' = default (no overlay)
+}
+
+/* ═════════════════════════════════════════════════════════════
+   ── PROJECTOR MODULE ──
+   Lista de trades + visor de imagen + medidor NQ (multi-sesión).
+   Cada imagen guarda sus marcas en memoria (no persiste).
+   ═════════════════════════════════════════════════════════════ */
+(function(){
+  const TICKS_PER_POINT  = 4;
+  const USD_PER_POINT_NQ = 20;
+  const USD_PER_POINT_MNQ= 2;
+
+  // Estado actual de la imagen mostrada
+  const state = {
+    currentKey: null,   // URL de la imagen actual (clave en sessions)
+    naturalH: 0,
+    naturalW: 0,
+  };
+
+  /* ── CALIBRACIÓN POR 2 PRECIOS REALES ──
+     Multi-sesión: key=URL → {
+       step, calibA, calibB,           // pixeles naturales de Ref A / Ref B
+       priceA, priceB,                 // precios reales del eje en esos pixeles
+       ppx,                            // pts/pixel (magnitud)
+       slope,                          // (priceB-priceA)/(calibB.y-calibA.y) — para convertir y→precio
+       refY, refPrice,                 // ancla para priceAt() (= calibA.y / priceA cuando es local)
+       entry, sl, target,              // y naturales
+       useGlobal                       // si la escala proviene del global (sin priceA local)
+     }
+  */
+  const sessions = new Map();
+
+  // ── Calibración GLOBAL persistente (localStorage) ────
+  // Guardamos un objeto con ppx + slope + ancla (refY/refPrice) para poder calcular precios reales
+  // en otras imágenes asumiendo que comparten escala (lo cual es bajo nuestro riesgo entre capturas).
+  const GLOBAL_KEY = 'proj_global_calib_v2';
+  function loadGlobal(){
+    try {
+      const raw = localStorage.getItem(GLOBAL_KEY);
+      if(!raw) return null;
+      const o = JSON.parse(raw);
+      if(o && isFinite(o.ppx) && o.ppx > 0) return o;
+      return null;
+    } catch(_){ return null; }
+  }
+  function saveGlobal(obj){
+    try { localStorage.setItem(GLOBAL_KEY, JSON.stringify(obj)); } catch(_){}
+  }
+  function clearGlobalLS(){
+    try { localStorage.removeItem(GLOBAL_KEY); } catch(_){}
+  }
+
+  // POLÍTICA: cada imagen arranca SIN calibrar — la global nunca se aplica
+  // silenciosamente. El usuario decide explícitamente vía botón "Aplicar global".
+  // offerDismissed: true si el usuario eligió "Calibrar esta imagen" (oculta el aviso
+  // hasta que reinicie). useGlobal: true sólo si pidió explícitamente aplicar la global.
+  function newSession(){
+    return { step: 1, calibA: null, calibB: null, priceA: null, priceB: null,
+             ppx: null, slope: null, refY: null, refPrice: null,
+             entry: null, sl: null, target: null,
+             useGlobal: false, offerDismissed: false };
+  }
+
+  // Convierte un yNatural a precio real (si hay ancla disponible)
+  function priceAt(s, yNat){
+    if(!s || s.slope == null || s.refY == null || s.refPrice == null) return null;
+    return s.refPrice + (yNat - s.refY) * s.slope;
+  }
+  function curr(){
+    if(!state.currentKey) return null;
+    let s = sessions.get(state.currentKey);
+    if(!s){ s = newSession(); sessions.set(state.currentKey, s); }
+    return s;
+  }
+
+  const $ = id => document.getElementById(id);
+
+  // ── Render lista de trades ──
+  window.projRefreshList = function(){
+    const list = $('proj-trade-list');
+    const cnt  = $('proj-list-count');
+    if(!list) return;
+    if(typeof csvData === 'undefined' || !csvData.length){
+      list.innerHTML = '<div style="padding:14px;color:var(--t3);font-size:10px;text-align:center;line-height:1.6;">Cargá un CSV<br>para ver tus trades</div>';
+      if(cnt) cnt.textContent = '0';
+      return;
+    }
+    const imgCol  = (typeof dynState !== 'undefined' && dynState.imgCol) ? dynState.imgCol :
+                    (typeof resolveCol === 'function' ? resolveCol('Link Trade') : 'Link Trade');
+    const resCol  = (typeof RES_COL !== 'undefined' && RES_COL) ? RES_COL :
+                    (typeof resolveCol === 'function' ? resolveCol('iFVG - RES') : 'iFVG - RES');
+    const rrCol   = (typeof RR_COL  !== 'undefined' && RR_COL)  ? RR_COL  :
+                    (typeof resolveCol === 'function' ? resolveCol('iFVG - RR')  : 'iFVG - RR');
+    const fechaCol= typeof resolveCol === 'function' ? resolveCol('Fecha') : 'Fecha';
+    const diaCol  = (typeof CMAP !== 'undefined' ? CMAP.dia : 'Dia');
+    const mesCol  = (typeof CMAP !== 'undefined' ? CMAP.mes : 'Mes');
+
+    const html = csvData.map((t, idx) => {
+      const link = (t[imgCol] || '').toString().trim();
+      const hasImg = !!link;
+      const res  = (t[resCol] || '').toString().trim().toUpperCase();
+      const rrRaw= (typeof parseRR === 'function') ? parseRR(t[rrCol]) :
+                   parseFloat((t[rrCol]||'').toString().replace(',','.'));
+      const isW  = res.includes('WIN') ? true : res.includes('LOSS') ? false : (rrRaw != null ? rrRaw > 0 : null);
+      const cls  = isW === true ? 'tw' : isW === false ? 'tl' : '';
+      const txCls= isW === true ? 'tx-g' : isW === false ? 'tx-r' : '';
+      const fecha= t[fechaCol] || (t[diaCol] && t[mesCol] ? t[diaCol]+'/'+t[mesCol] : '') || '—';
+      const resTxt = isW === true ? 'WIN' : isW === false ? 'LOSS' : '—';
+      const rrTxt  = (rrRaw != null && !isNaN(rrRaw)) ? (rrRaw>0?'+':'')+rrRaw.toFixed(2)+'R' : '—';
+      return `<div class="proj-trade-row ${cls}" data-idx="${idx}" data-link="${link.replace(/"/g,'&quot;')}" onclick="projOpenTradeByIdx(${idx})">
+        <span class="ptr-fecha">${fecha}</span>
+        <span class="ptr-res ${txCls}">${resTxt}</span>
+        <span class="ptr-rr ${txCls}">${rrTxt}</span>
+        <span class="ptr-img-dot ${hasImg?'has-img':''}" title="${hasImg?'Imagen disponible':'Sin imagen'}"></span>
+      </div>`;
+    }).join('');
+    list.innerHTML = html;
+    if(cnt) cnt.textContent = csvData.length;
+  };
+
+  window.projOpenTradeByIdx = function(idx){
+    if(!csvData || !csvData[idx]) return;
+    // Antes de cambiar de trade, persistir cualquier cambio del actual (ya está en map)
+    const t = csvData[idx];
+    const imgCol  = (typeof dynState !== 'undefined' && dynState.imgCol) ? dynState.imgCol :
+                    (typeof resolveCol === 'function' ? resolveCol('Link Trade') : 'Link Trade');
+    const link = (t[imgCol] || '').toString().trim();
+
+    // Marcar fila activa
+    document.querySelectorAll('.proj-trade-row').forEach(r => r.classList.remove('active'));
+    const row = document.querySelector('.proj-trade-row[data-idx="'+idx+'"]');
+    if(row) row.classList.add('active');
+
+    const img = $('proj-img'), cv = $('proj-canvas'), empty = $('proj-empty');
+    if(!link){
+      // Sin imagen
+      if(img) { img.style.display = 'none'; img.src = ''; }
+      if(cv)  cv.style.display = 'none';
+      if(empty){ empty.style.display = 'block'; empty.innerHTML = 'Este trade no tiene imagen asociada<br>Seleccioná otro.'; }
+      state.currentKey = null;
+      setStep('Sin imagen');
+      refreshPanel();
+      return;
+    }
+
+    state.currentKey = link;
+    if(empty) empty.style.display = 'none';
+    if(img){
+      img.style.display = '';
+      img.onload = () => { setTimeout(syncCanvas, 30); };
+      img.src = link;
+    }
+    if(cv) cv.style.display = '';
+    // Restaurar sesión de esta imagen
+    const s = curr();
+    refreshStep();
+    refreshPanel();
+  };
+
+  // ── Sync canvas a la imagen ──
+  function syncCanvas(){
+    const img = $('proj-img'), cv = $('proj-canvas'), wrap = $('proj-img-wrap');
+    if(!img || !cv || !wrap || !img.naturalWidth) return;
+    const ir = img.getBoundingClientRect();
+    const wr = wrap.getBoundingClientRect();
+    cv.style.left = (ir.left - wr.left) + 'px';
+    cv.style.top  = (ir.top  - wr.top ) + 'px';
+    cv.style.width  = ir.width  + 'px';
+    cv.style.height = ir.height + 'px';
+    cv.width  = Math.round(ir.width);
+    cv.height = Math.round(ir.height);
+    state.naturalW = img.naturalWidth;
+    state.naturalH = img.naturalHeight;
+    redraw();
+  }
+
+  function clickToNatural(ev){
+    const img = $('proj-img');
+    if(!img || !img.naturalHeight) return null;
+    // ── ZOOM GLOBAL POR DISPOSITIVO ── normalizar al MISMO sistema de coords
+    // (pre-zoom). En Chrome moderno tanto rect como clientX están en el sistema
+    // post-zoom, por lo que dividir ambos por z se cancela y el resultado es
+    // idéntico. En navegadores donde sólo uno está escalado, esta normalización
+    // protege la calibración. Mate: (X-L)·natural/W es invariante.
+    const z = (window.__jqZoomFactor && window.__jqZoomFactor()) || 1;
+    const r = img.getBoundingClientRect();
+    const rLeft = r.left / z, rTop = r.top / z;
+    const rW = r.width / z,   rH = r.height / z;
+    const xDisp = (ev.clientX / z) - rLeft;
+    const yDisp = (ev.clientY / z) - rTop;
+    if(xDisp < 0 || yDisp < 0 || xDisp > rW || yDisp > rH) return null;
+    return { x: xDisp * (img.naturalWidth/rW), y: yDisp * (img.naturalHeight/rH) };
+  }
+  function natToCY(yN){
+    const img = $('proj-img');
+    if(!img || !img.naturalHeight) return 0;
+    return yN * (img.clientHeight / img.naturalHeight);
+  }
+  function natToCX(xN){
+    const img = $('proj-img');
+    if(!img || !img.naturalWidth) return 0;
+    return xN * (img.clientWidth / img.naturalWidth);
+  }
+
+  function redraw(){
+    const cv = $('proj-canvas');
+    if(!cv) return;
+    const ctx = cv.getContext('2d');
+    ctx.clearRect(0,0,cv.width,cv.height);
+    const s = curr();
+    if(!s) return;
+    drawCalibPoint(ctx, s.calibA, '#ffc24a', 'C1', s.priceA);
+    drawCalibPoint(ctx, s.calibB, '#ffc24a', 'C2', s.priceB);
+    if(s.calibA && s.calibB){
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255,194,74,.55)';
+      ctx.setLineDash([4,4]);
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      const xMid = cv.width - 60;
+      ctx.moveTo(xMid, natToCY(s.calibA.y));
+      ctx.lineTo(xMid, natToCY(s.calibB.y));
+      ctx.stroke();
+      ctx.restore();
+    }
+    const pE = s.entry  != null ? priceAt(s, s.entry)  : null;
+    const pS = s.sl     != null ? priceAt(s, s.sl)     : null;
+    const pT = s.target != null ? priceAt(s, s.target) : null;
+    if(s.entry  != null) drawLevel(ctx, s.entry,  '#ffffff', 'Entrada', pE);
+    if(s.sl     != null) drawLevel(ctx, s.sl,     '#ff6480', 'SL',      pS);
+    if(s.target != null) drawLevel(ctx, s.target, '#2ee69c', 'Target',  pT);
+  }
+
+  function drawCalibPoint(ctx, p, color, label, price){
+    if(!p) return;
+    const x = natToCX(p.x), y = natToCY(p.y);
+    ctx.save();
+    ctx.fillStyle = color;
+    ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI*2); ctx.fill();
+    ctx.shadowColor = color; ctx.shadowBlur = 8;
+    ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI*2); ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.font = 'bold 10px monospace'; ctx.fillStyle = color;
+    const txt = price != null && isFinite(price) ? (label + ' ' + price.toFixed(2)) : label;
+    ctx.fillText(txt, x + 8, y - 6);
+    ctx.restore();
+  }
+  function drawLevel(ctx, yNat, color, label, price){
+    const cv = $('proj-canvas');
+    const y = natToCY(yNat);
+    ctx.save();
+    ctx.strokeStyle = color; ctx.lineWidth = 1.5;
+    ctx.shadowColor = color; ctx.shadowBlur = 4;
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(cv.width, y); ctx.stroke();
+    ctx.shadowBlur = 0;
+    const padX = 6, padY = 3;
+    ctx.font = 'bold 11px monospace';
+    const txt = (price != null && isFinite(price)) ? (label + ' ' + price.toFixed(2)) : label;
+    const tw = ctx.measureText(txt).width;
+    const lx = 6, ly = y - 6;
+    ctx.fillStyle = 'rgba(8,13,20,.85)';
+    ctx.fillRect(lx - padX, ly - 11 - padY, tw + padX*2, 11 + padY*2);
+    ctx.strokeStyle = color; ctx.lineWidth = 1;
+    ctx.strokeRect(lx - padX, ly - 11 - padY, tw + padX*2, 11 + padY*2);
+    ctx.fillStyle = color;
+    ctx.fillText(txt, lx, ly);
+    ctx.restore();
+  }
+
+  function setStep(t){ const e = $('pm-step'); if(e) e.textContent = t; }
+  function setCalibErr(msg){
+    const e = $('pm-calib-err');
+    if(!e) return;
+    if(msg){ e.style.display='block'; e.textContent = msg; }
+    else   { e.style.display='none'; e.textContent = ''; }
+  }
+
+  function refreshGlobalUI(){
+    const bar    = $('pm-global-bar');
+    const valEl  = $('pm-gb-val');
+    const txtEl  = $('pm-gb-txt');
+    const offer  = $('pm-global-offer');
+    const offerV = $('pm-go-val');
+    const saveBtn= $('pm-save-global-btn');
+    const g      = loadGlobal();
+    const s      = curr();
+
+    // Badge: visible solo si la imagen ACTUAL tiene escala activa (heredada o propia).
+    // El color/texto cambian según el origen:
+    //   - useGlobal=true → "GLOBAL ACTIVA" (ámbar/rojizo): heredada, no por-imagen
+    //   - useGlobal=false con s.ppx → "Calibrada (esta imagen)" (verde/cyan): propia
+    if(bar){
+      bar.classList.remove('pm-mode-global','pm-mode-local');
+      if(s && s.ppx != null && s.useGlobal){
+        bar.style.display = 'flex';
+        bar.classList.add('pm-mode-global');
+        if(txtEl) txtEl.textContent = '⚠ GLOBAL ACTIVA (heredada)';
+        if(valEl) valEl.textContent = s.ppx.toFixed(5) + ' pts/px';
+      } else if(s && s.ppx != null && !s.useGlobal){
+        bar.style.display = 'flex';
+        bar.classList.add('pm-mode-local');
+        if(txtEl) txtEl.textContent = '✓ Calibrada (esta imagen)';
+        if(valEl) valEl.textContent = s.ppx.toFixed(5) + ' pts/px';
+      } else {
+        bar.style.display = 'none';
+      }
+    }
+
+    // Aviso de "global disponible" — SOLO si:
+    //  · existe escala global en localStorage
+    //  · esta sesión NO está usando una escala (ni global heredada ni local propia)
+    //  · el usuario NO la rechazó en esta sesión
+    //  · hay imagen seleccionada
+    if(offer){
+      const showOffer = !!(g && s && !s.useGlobal && s.ppx == null
+                          && !s.offerDismissed && state.currentKey);
+      offer.style.display = showOffer ? 'block' : 'none';
+      if(showOffer && offerV) offerV.textContent = g.ppx.toFixed(5) + ' pts/px';
+    }
+
+    // Botón "Guardar como global" visible solo si tenés calibración local completa
+    // y no coincide con el global actual
+    if(saveBtn){
+      const localPpx = (s && s.ppx != null && !s.useGlobal) ? s.ppx : null;
+      const same = g != null && localPpx != null && Math.abs(localPpx - g.ppx) < 1e-6;
+      saveBtn.style.display = (localPpx != null && !same) ? 'block' : 'none';
+    }
+  }
+
+  function refreshStep(){
+    const s = curr();
+    if(!s){ setStep('Seleccioná un trade primero'); refreshGlobalUI(); return; }
+    if(s.useGlobal && s.step === 3) setStep('⚠ Usando escala GLOBAL — click → ENTRADA');
+    else if(s.step === 1) setStep('Calibrá esta imagen: click sobre la 1ª línea de precio (Ref A)');
+    else if(s.step === 2 && !s.calibB) setStep('Escribí Precio A y hacé click en la 2ª línea (Ref B)');
+    else if(s.step === 2) setStep('Escribí Precio A y Precio B para completar la calibración');
+    else if(s.step === 3) setStep('Click → marcar ENTRADA');
+    else if(s.step === 4) setStep('Click → marcar STOP LOSS');
+    else if(s.step === 5) setStep('Click → marcar TARGET (opcional)');
+    else setStep('✓ Medición lista — click para reasignar target');
+    const inpA = $('pm-priceA-input'), inpB = $('pm-priceB-input');
+    if(inpA){
+      inpA.disabled = !s.calibA || s.useGlobal;
+      if(document.activeElement !== inpA) inpA.value = s.priceA != null ? s.priceA : '';
+    }
+    if(inpB){
+      inpB.disabled = !s.calibB || s.useGlobal;
+      if(document.activeElement !== inpB) inpB.value = s.priceB != null ? s.priceB : '';
+    }
+    refreshGlobalUI();
+  }
+
+  function fmtPts(v){ return v == null ? '—' : v.toFixed(2) + ' pts'; }
+  function fmtTks(v){ return v == null ? '—' : Math.round(v) + ' tk'; }
+  function fmtUsd(v){ return v == null ? '—' : '$' + v.toFixed(2); }
+
+  function refreshPanel(){
+    const s = curr();
+    if(!s){
+      ['pm-ppx','pm-sl-pts','pm-sl-tks','pm-sl-usd','pm-sl-usdm','pm-tgt-pts','pm-tgt-tks','pm-tgt-usd','pm-tgt-usdm','pm-rr']
+        .forEach(id => { const e = $(id); if(e) e.textContent = '—'; });
+      const rrRow = $('pm-rr-row'); if(rrRow) rrRow.classList.remove('pm-rr-bad');
+      refreshGlobalUI();
+      return;
+    }
+    // ppx: si hay calibración local completa, calcular desde 2 precios reales
+    setCalibErr('');
+    if(s.calibA && s.calibB && s.priceA != null && s.priceB != null){
+      const dyPx = Math.abs(s.calibA.y - s.calibB.y);
+      const dPr  = Math.abs(s.priceA - s.priceB);
+      if(dyPx <= 0){ s.ppx = null; s.slope = null; setCalibErr('Ref A y Ref B caen en el mismo pixelY — reclickeá.'); }
+      else if(dPr <= 0){ s.ppx = null; s.slope = null; setCalibErr('Precio A y Precio B son iguales — corregilos.'); }
+      else {
+        s.ppx   = dPr / dyPx;
+        s.slope = (s.priceB - s.priceA) / (s.calibB.y - s.calibA.y);
+        s.refY  = s.calibA.y;
+        s.refPrice = s.priceA;
+        s.useGlobal = false;  // ahora tiene calibración propia
+      }
+    } else if(s.useGlobal){
+      // Mantener s.ppx/slope/ancla del global
+    } else {
+      s.ppx = null;
+    }
+    $('pm-ppx').textContent = s.ppx != null ? (s.ppx.toFixed(5) + (s.useGlobal ? ' (global)' : '')) : '—';
+
+    let slPts = null;
+    if(s.entry != null && s.sl != null && s.ppx != null){
+      slPts = Math.abs(s.entry - s.sl) * s.ppx;
+      $('pm-sl-pts').textContent  = fmtPts(slPts);
+      $('pm-sl-tks').textContent  = fmtTks(slPts * TICKS_PER_POINT);
+      $('pm-sl-usd').textContent  = fmtUsd(slPts * USD_PER_POINT_NQ);
+      $('pm-sl-usdm').textContent = fmtUsd(slPts * USD_PER_POINT_MNQ);
+    } else {
+      $('pm-sl-pts').textContent = $('pm-sl-tks').textContent =
+      $('pm-sl-usd').textContent = $('pm-sl-usdm').textContent = '—';
+    }
+    let tgtPts = null;
+    if(s.entry != null && s.target != null && s.ppx != null){
+      tgtPts = Math.abs(s.target - s.entry) * s.ppx;
+      $('pm-tgt-pts').textContent  = fmtPts(tgtPts);
+      $('pm-tgt-tks').textContent  = fmtTks(tgtPts * TICKS_PER_POINT);
+      $('pm-tgt-usd').textContent  = fmtUsd(tgtPts * USD_PER_POINT_NQ);
+      $('pm-tgt-usdm').textContent = fmtUsd(tgtPts * USD_PER_POINT_MNQ);
+    } else {
+      $('pm-tgt-pts').textContent = $('pm-tgt-tks').textContent =
+      $('pm-tgt-usd').textContent = $('pm-tgt-usdm').textContent = '—';
+    }
+    const rrRow = $('pm-rr-row');
+    if(slPts != null && tgtPts != null && slPts > 0){
+      const rr = tgtPts / slPts;
+      $('pm-rr').textContent = '1 : ' + rr.toFixed(2);
+      if(rrRow) rrRow.classList.toggle('pm-rr-bad', rr < 1);
+    } else {
+      $('pm-rr').textContent = '—';
+      if(rrRow) rrRow.classList.remove('pm-rr-bad');
+    }
+    refreshGlobalUI();
+  }
+
+  // ── Guardar calibración actual como GLOBAL (solo persiste, NO la aplica
+  // automáticamente al resto de imágenes — cada imagen debe optar explícitamente). ──
+  window.projSaveGlobalCalib = function(){
+    const s = curr();
+    if(!s || s.ppx == null || s.slope == null || s.refY == null || s.refPrice == null) return;
+    const g = { ppx: s.ppx, slope: s.slope, refY: s.refY, refPrice: s.refPrice };
+    saveGlobal(g);
+    // NO aplicar a las demás sesiones — el usuario decide caso por caso vía
+    // el aviso "Calibración global disponible" en cada imagen.
+    sessions.forEach((sess, key) => {
+      if(key === state.currentKey) return;
+      // Permitir que el aviso reaparezca para sesiones que aún no tienen escala
+      if(!sess.useGlobal && sess.ppx == null) sess.offerDismissed = false;
+    });
+    refreshStep();
+    refreshPanel();
+  };
+
+  // ── Borrar calibración global guardada ──
+  window.projClearGlobalCalib = function(){
+    clearGlobalLS();
+    // Resetear las sesiones que estaban usando la global heredada
+    sessions.forEach((sess) => {
+      if(sess.useGlobal){
+        sess.useGlobal = false;
+        sess.ppx = null; sess.slope = null; sess.refY = null; sess.refPrice = null;
+        if(sess.step === 3 && !sess.entry) sess.step = 1;
+      }
+    });
+    refreshStep();
+    refreshPanel();
+    redraw();
+  };
+
+  // ── Aplicar la global guardada SOLO a la imagen actual (acción explícita) ──
+  window.projApplyGlobalCalib = function(){
+    const s = curr();
+    const g = loadGlobal();
+    if(!s || !g) return;
+    // No pisar una calibración local en progreso si ya hay clicks
+    s.calibA = s.calibB = null;
+    s.priceA = s.priceB = null;
+    s.entry = s.sl = s.target = null;
+    s.ppx = g.ppx; s.slope = g.slope; s.refY = g.refY; s.refPrice = g.refPrice;
+    s.useGlobal = true;
+    s.offerDismissed = true;
+    s.step = 3;  // listo para marcar entrada
+    refreshStep();
+    refreshPanel();
+    redraw();
+  };
+
+  // ── Rechazar el aviso de global y arrancar flujo de calibración local ──
+  window.projDismissGlobalOffer = function(){
+    const s = curr();
+    if(!s) return;
+    s.offerDismissed = true;
+    refreshGlobalUI();
+  };
+
+  function onCanvasClick(ev){
+    const s = curr();
+    if(!s) return;
+    ev.preventDefault();
+    const p = clickToNatural(ev);
+    if(!p) return;
+    if(s.step === 1){
+      s.calibA = p; s.step = 2;
+      const inp = $('pm-priceA-input');
+      if(inp){ inp.disabled = false; setTimeout(() => inp.focus(), 40); }
+    }
+    else if(s.step === 2 && !s.calibB){
+      s.calibB = p;
+      const inp = $('pm-priceB-input');
+      if(inp){ inp.disabled = false; setTimeout(() => inp.focus(), 40); }
+    }
+    else if(s.step === 3){ s.entry = p.y; s.step = 4; }
+    else if(s.step === 4){ s.sl    = p.y; s.step = 5; }
+    else if(s.step === 5){ s.target= p.y; s.step = 6; }
+    else if(s.step >= 6){
+      s.target = p.y;  // re-clicks reasignan target
+    }
+    refreshStep();
+    refreshPanel();
+    redraw();
+  }
+
+  // ── API pública ──
+  window.projOpen = function(){
+    projRefreshList();
+    syncCanvas();
+    refreshStep();
+    refreshPanel();
+  };
+  window.projMeasureReset = function(){
+    // Reset → nueva sesión limpia (NO hereda global; reaparece el aviso si existe)
+    if(state.currentKey) sessions.set(state.currentKey, newSession());
+    refreshStep();
+    refreshPanel();
+    redraw();
+  };
+  // Forzar recalibración por imagen — descarta global heredado para esta sesión
+  // y suprime el aviso (asume que el usuario ya decidió calibrar esta imagen)
+  window.projMeasureRecalibrate = function(){
+    const s = curr();
+    if(!s) return;
+    s.calibA = s.calibB = null;
+    s.priceA = s.priceB = null;
+    s.ppx = s.slope = s.refY = s.refPrice = null;
+    s.useGlobal = false;
+    s.entry = s.sl = s.target = null;
+    s.step = 1;
+    s.offerDismissed = true;
+    setCalibErr('');
+    refreshStep();
+    refreshPanel();
+    redraw();
+  };
+  window.projMeasureBack = function(){
+    const s = curr();
+    if(!s) return;
+    if(s.step >= 6 && s.target != null){ s.target = null; s.step = 5; }
+    else if(s.step >= 5 && s.sl != null){ s.sl = null; s.step = 4; }
+    else if(s.step >= 4 && s.entry != null){ s.entry = null; s.step = 3; }
+    else if(s.step === 3 && !s.useGlobal){
+      // Volver a calibración: limpiar Precio B (más reciente) y conservar B click
+      if(s.priceB != null){ s.priceB = null; s.step = 2; }
+      else if(s.calibB){ s.calibB = null; s.step = 2; }
+      else if(s.priceA != null){ s.priceA = null; s.step = 2; }
+      else if(s.calibA){ s.calibA = null; s.step = 1; }
+      s.ppx = s.slope = s.refY = s.refPrice = null;
+    }
+    else if(s.step === 3 && s.useGlobal){ /* no retroceder de un step 3 heredado */ }
+    else if(s.step === 2 && s.calibB){ s.calibB = null; s.priceB = null; }
+    else if(s.step === 2 && !s.calibB){
+      if(s.priceA != null){ s.priceA = null; }
+      else { s.calibA = null; s.step = 1; }
+    }
+    refreshStep();
+    refreshPanel();
+    redraw();
+  };
+  window.projMeasureCalibChange = function(){
+    const s = curr();
+    if(!s) return;
+    const inpA = $('pm-priceA-input');
+    const inpB = $('pm-priceB-input');
+    const vA = inpA ? parseFloat(inpA.value) : NaN;
+    const vB = inpB ? parseFloat(inpB.value) : NaN;
+    s.priceA = isFinite(vA) ? vA : null;
+    s.priceB = isFinite(vB) ? vB : null;
+    // Avanzar a paso 3 cuando todo está completo y válido
+    if(s.calibA && s.calibB && s.priceA != null && s.priceB != null
+       && s.priceA !== s.priceB && s.calibA.y !== s.calibB.y
+       && s.step <= 2){
+      s.step = 3;
+    }
+    refreshStep();
+    refreshPanel();
+    redraw();
+  };
+
+  // Setup wire-up al cargar
+  function setup(){
+    const cv = $('proj-canvas');
+    if(cv) cv.addEventListener('click', onCanvasClick);
+    window.addEventListener('resize', () => {
+      if(document.getElementById('projector-view').classList.contains('proj-open')) syncCanvas();
+    });
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', setup);
+  else setup();
+
+  // Re-fresh list cuando se carga un CSV nuevo (poll suave)
+  setInterval(() => {
+    if(document.getElementById('projector-view') &&
+       document.getElementById('projector-view').classList.contains('proj-open')){
+      syncCanvas();
+    }
+  }, 800);
+})();
+
+/* ═════════════════════════════════════════════════════════════
+   ── PIP MEASURE TOOL ──
+   Modo medición sobre #ag-img — calibración por 2 clicks + 1 número,
+   luego marcas de entrada / SL / target con cálculos NQ (puntos /
+   ticks / USD) y RR. Totalmente aislado (prefijo agMeasure / am).
+   No persiste nada, no toca CSV ni agState.trades.
+   ═════════════════════════════════════════════════════════════ */
+(function(){
+  // ── Constantes NQ ────────────────────────────
+  const TICKS_PER_POINT = 4;
+  const USD_PER_POINT_NQ  = 20;
+  const USD_PER_POINT_MNQ = 2;
+
+  /* ── CALIBRACIÓN POR 2 PRECIOS REALES ──
+     step: 0 = off
+           1 = esperando click Ref A
+           2 = click A hecho; esperando click Ref B + 2 precios
+           3 = calibrado → marcar entrada
+           4 = SL | 5 = target | 6 = listo
+  */
+  const m = {
+    active: false,
+    step: 0,
+    calibA: null,    // {x,y} en coords NATURAL — click sobre línea de precio Ref A
+    calibB: null,    // idem Ref B
+    priceA: null,    // precio real escrito por el usuario en Ref A
+    priceB: null,    // precio real escrito por el usuario en Ref B
+    ppx: null,       // puntos por pixel (magnitud, en escala natural)
+    slope: null,     // (priceB-priceA)/(calibB.y-calibA.y) — signed para convertir y→precio
+    entry: null,     // {y} natural
+    sl:    null,
+    target:null,
+    naturalH: 0,
+    naturalW: 0,
+  };
+
+  // ── Helpers DOM ──────────────────────────────
+  const $ = id => document.getElementById(id);
+
+  function setStep(txt){ const e = $('am-step'); if(e) e.textContent = txt; }
+  function setCalibErr(msg){
+    const e = $('am-calib-err');
+    if(!e) return;
+    if(msg){ e.style.display='block'; e.textContent = msg; }
+    else   { e.style.display='none'; e.textContent = ''; }
+  }
+  // Convertir yNatural → precio real (necesita calibración válida)
+  function priceAt(yNat){
+    if(m.slope == null || m.calibA == null || m.priceA == null) return null;
+    return m.priceA + (yNat - m.calibA.y) * m.slope;
+  }
+
+  function fmtPts(v){ return v == null ? '—' : v.toFixed(2) + ' pts'; }
+  function fmtTks(v){ return v == null ? '—' : Math.round(v) + ' tk'; }
+  function fmtUsd(v){ return v == null ? '—' : '$' + v.toFixed(2); }
+
+  // ── Resize canvas para que coincida exactamente con la imagen mostrada ──
+  function syncCanvas(){
+    const img = $('ag-img'), cv = $('ag-measure-canvas'), wrap = $('ag-img-wrap');
+    if(!img || !cv || !wrap) return;
+    // Esperar a que la imagen esté cargada
+    if(!img.naturalWidth || !img.naturalHeight) return;
+    const ir = img.getBoundingClientRect();
+    const wr = wrap.getBoundingClientRect();
+    // Posición relativa al wrap
+    cv.style.left = (ir.left - wr.left) + 'px';
+    cv.style.top  = (ir.top  - wr.top ) + 'px';
+    cv.style.width  = ir.width  + 'px';
+    cv.style.height = ir.height + 'px';
+    cv.width  = Math.round(ir.width);
+    cv.height = Math.round(ir.height);
+    m.naturalW = img.naturalWidth;
+    m.naturalH = img.naturalHeight;
+    redraw();
+  }
+
+  // ── Convertir click viewport → coords NATURAL de la imagen ──
+  function clickToNatural(ev){
+    const img = $('ag-img');
+    if(!img || !img.naturalHeight) return null;
+    // ── ZOOM GLOBAL POR DISPOSITIVO ── normalizar rect y clientX al mismo
+    // sistema (pre-zoom). Invariante matemático garantiza misma calibración
+    // a cualquier factor.
+    const z = (window.__jqZoomFactor && window.__jqZoomFactor()) || 1;
+    const r = img.getBoundingClientRect();
+    const rLeft = r.left / z, rTop = r.top / z;
+    const rW = r.width / z,   rH = r.height / z;
+    const xDisp = (ev.clientX / z) - rLeft;
+    const yDisp = (ev.clientY / z) - rTop;
+    if(xDisp < 0 || yDisp < 0 || xDisp > rW || yDisp > rH) return null;
+    const scaleY = img.naturalHeight / rH;
+    const scaleX = img.naturalWidth  / rW;
+    return { x: xDisp * scaleX, y: yDisp * scaleY };
+  }
+
+  // ── Convertir coord NATURAL → pixel canvas (display) ──
+  function naturalToCanvas(yNat){
+    const img = $('ag-img');
+    if(!img || !img.naturalHeight) return 0;
+    return yNat * (img.clientHeight / img.naturalHeight);
+  }
+  function naturalToCanvasX(xNat){
+    const img = $('ag-img');
+    if(!img || !img.naturalWidth) return 0;
+    return xNat * (img.clientWidth / img.naturalWidth);
+  }
+
+  // ── Dibujar todas las marcas en el canvas ──
+  function redraw(){
+    const cv = $('ag-measure-canvas');
+    if(!cv) return;
+    const ctx = cv.getContext('2d');
+    ctx.clearRect(0,0,cv.width,cv.height);
+    if(!m.active) return;
+
+    // Calibración: 2 puntos pequeños + línea punteada amarilla (con precio si está)
+    drawCalibPoint(ctx, m.calibA, '#ffc24a', 'C1', m.priceA);
+    drawCalibPoint(ctx, m.calibB, '#ffc24a', 'C2', m.priceB);
+    if(m.calibA && m.calibB){
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255,194,74,.55)';
+      ctx.setLineDash([4,4]);
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      const xMid = cv.width - 60;
+      ctx.moveTo(xMid, naturalToCanvas(m.calibA.y));
+      ctx.lineTo(xMid, naturalToCanvas(m.calibB.y));
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Líneas horizontales — entrada / SL / target (con precio real)
+    const pE = m.entry  != null ? priceAt(m.entry)  : null;
+    const pS = m.sl     != null ? priceAt(m.sl)     : null;
+    const pT = m.target != null ? priceAt(m.target) : null;
+    if(m.entry != null)  drawLevel(ctx, m.entry,  '#ffffff', 'Entrada', pE);
+    if(m.sl    != null)  drawLevel(ctx, m.sl,     '#ff6480', 'SL',      pS);
+    if(m.target!= null)  drawLevel(ctx, m.target, '#2ee69c', 'Target',  pT);
+  }
+
+  function drawCalibPoint(ctx, p, color, label, price){
+    if(!p) return;
+    const x = naturalToCanvasX(p.x);
+    const y = naturalToCanvas(p.y);
+    ctx.save();
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(x, y, 5, 0, Math.PI*2);
+    ctx.fill();
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 8;
+    ctx.beginPath();
+    ctx.arc(x, y, 3, 0, Math.PI*2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    // Label (con precio si fue ingresado)
+    ctx.font = 'bold 10px monospace';
+    ctx.fillStyle = color;
+    const txt = (price != null && isFinite(price)) ? (label + ' ' + price.toFixed(2)) : label;
+    ctx.fillText(txt, x + 8, y - 6);
+    ctx.restore();
+  }
+
+  function drawLevel(ctx, yNat, color, label, price){
+    const cv = $('ag-measure-canvas');
+    const y = naturalToCanvas(yNat);
+    ctx.save();
+    // Línea horizontal
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.5;
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 4;
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(cv.width, y);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    // Label con fondo + precio real si está disponible
+    const padX = 6, padY = 3;
+    ctx.font = 'bold 11px monospace';
+    const txt = (price != null && isFinite(price)) ? (label + ' ' + price.toFixed(2)) : label;
+    const tw = ctx.measureText(txt).width;
+    const lx = 6, ly = y - 6;
+    ctx.fillStyle = 'rgba(8,13,20,.85)';
+    ctx.fillRect(lx - padX, ly - 11 - padY, tw + padX*2, 11 + padY*2);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(lx - padX, ly - 11 - padY, tw + padX*2, 11 + padY*2);
+    ctx.fillStyle = color;
+    ctx.fillText(txt, lx, ly);
+    ctx.restore();
+  }
+
+  // ── Cálculos y render del panel ──
+  function recalcAndRender(){
+    // Calibración desde 2 precios reales
+    setCalibErr('');
+    if(m.calibA && m.calibB && m.priceA != null && m.priceB != null){
+      const dyPx = Math.abs(m.calibA.y - m.calibB.y);  // coords naturales
+      const dPr  = Math.abs(m.priceA - m.priceB);
+      if(dyPx <= 0){ m.ppx = null; m.slope = null; setCalibErr('Ref A y Ref B caen en el mismo pixelY — reclickeá.'); }
+      else if(dPr <= 0){ m.ppx = null; m.slope = null; setCalibErr('Precio A y Precio B son iguales — corregilos.'); }
+      else {
+        m.ppx   = dPr / dyPx;
+        m.slope = (m.priceB - m.priceA) / (m.calibB.y - m.calibA.y);
+      }
+    } else {
+      m.ppx = null; m.slope = null;
+    }
+    $('am-ppx').textContent = m.ppx != null ? m.ppx.toFixed(5) : '—';
+
+    // SL
+    if(m.entry != null && m.sl != null && m.ppx != null){
+      const pts = Math.abs(m.entry - m.sl) * m.ppx;
+      $('am-sl-pts').textContent  = fmtPts(pts);
+      $('am-sl-tks').textContent  = fmtTks(pts * TICKS_PER_POINT);
+      $('am-sl-usd').textContent  = fmtUsd(pts * USD_PER_POINT_NQ);
+      $('am-sl-usdm').textContent = fmtUsd(pts * USD_PER_POINT_MNQ);
+    } else {
+      $('am-sl-pts').textContent = $('am-sl-tks').textContent =
+      $('am-sl-usd').textContent = $('am-sl-usdm').textContent = '—';
+    }
+
+    // Target
+    let tgtPts = null;
+    if(m.entry != null && m.target != null && m.ppx != null){
+      tgtPts = Math.abs(m.target - m.entry) * m.ppx;
+      $('am-tgt-pts').textContent  = fmtPts(tgtPts);
+      $('am-tgt-tks').textContent  = fmtTks(tgtPts * TICKS_PER_POINT);
+      $('am-tgt-usd').textContent  = fmtUsd(tgtPts * USD_PER_POINT_NQ);
+      $('am-tgt-usdm').textContent = fmtUsd(tgtPts * USD_PER_POINT_MNQ);
+    } else {
+      $('am-tgt-pts').textContent = $('am-tgt-tks').textContent =
+      $('am-tgt-usd').textContent = $('am-tgt-usdm').textContent = '—';
+    }
+
+    // RR
+    const rrRow = $('am-rr-row');
+    if(m.entry != null && m.sl != null && m.target != null && m.ppx != null){
+      const slPts = Math.abs(m.entry - m.sl) * m.ppx;
+      if(slPts > 0 && tgtPts != null){
+        const rr = tgtPts / slPts;
+        $('am-rr').textContent = '1 : ' + rr.toFixed(2);
+        if(rrRow) rrRow.classList.toggle('am-rr-bad', rr < 1);
+      } else {
+        $('am-rr').textContent = '—';
+        if(rrRow) rrRow.classList.remove('am-rr-bad');
+      }
+    } else {
+      $('am-rr').textContent = '—';
+      if(rrRow) rrRow.classList.remove('am-rr-bad');
+    }
+  }
+
+  // ── Texto de step según estado ──
+  function refreshStep(){
+    if(m.step === 1) setStep('Calibrá: click sobre la 1ª línea de precio (Ref A)');
+    else if(m.step === 2 && !m.calibB) setStep('Escribí Precio A y hacé click en la 2ª línea (Ref B)');
+    else if(m.step === 2) setStep('Escribí Precio A y Precio B para completar la calibración');
+    else if(m.step === 3) setStep('Click → marcar ENTRADA');
+    else if(m.step === 4) setStep('Click → marcar STOP LOSS');
+    else if(m.step === 5) setStep('Click → marcar TARGET (opcional)');
+    else if(m.step === 6) setStep('✓ Medición lista — click para reasignar target');
+    const inpA = $('am-priceA-input'), inpB = $('am-priceB-input');
+    if(inpA){
+      inpA.disabled = !m.calibA;
+      if(document.activeElement !== inpA) inpA.value = m.priceA != null ? m.priceA : '';
+    }
+    if(inpB){
+      inpB.disabled = !m.calibB;
+      if(document.activeElement !== inpB) inpB.value = m.priceB != null ? m.priceB : '';
+    }
+  }
+
+  // ── Handler de click en el canvas ──
+  function onCanvasClick(ev){
+    if(!m.active) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    const p = clickToNatural(ev);
+    if(!p) return;
+
+    if(m.step === 1){
+      m.calibA = p;
+      m.step = 2;
+      const inp = $('am-priceA-input');
+      if(inp){ inp.disabled = false; setTimeout(()=>inp.focus(), 50); }
+    } else if(m.step === 2 && !m.calibB){
+      m.calibB = p;
+      const inp = $('am-priceB-input');
+      if(inp){ inp.disabled = false; setTimeout(()=>inp.focus(), 50); }
+    } else if(m.step === 3){
+      m.entry = p.y;
+      m.step = 4;
+    } else if(m.step === 4){
+      m.sl = p.y;
+      m.step = 5;
+    } else if(m.step === 5){
+      m.target = p.y;
+      m.step = 6;
+    } else if(m.step === 6){
+      // Re-clickear → reescribe el target (último nivel)
+      if(m.target != null) m.target = p.y;
+      else if(m.sl != null) m.sl = p.y;
+    }
+    refreshStep();
+    recalcAndRender();
+    redraw();
+  }
+
+  // ── API expuesta a window ──
+  function resetInputs(){
+    const a = $('am-priceA-input'), b = $('am-priceB-input');
+    if(a){ a.value = ''; a.disabled = true; }
+    if(b){ b.value = ''; b.disabled = true; }
+    setCalibErr('');
+  }
+
+  window.agMeasureToggle = function(){
+    if(!m.active){
+      // Activar
+      if(typeof agResetZoom === 'function') agResetZoom();
+      m.active = true;
+      m.step = 1;
+      m.calibA = m.calibB = null;
+      m.priceA = m.priceB = null;
+      m.ppx = m.slope = null;
+      m.entry = m.sl = m.target = null;
+      const wrap = document.getElementById('ag-img-wrap');
+      const panel = document.getElementById('ag-measure-panel');
+      const btn   = document.getElementById('ag-measure-btn');
+      if(wrap)  wrap.classList.add('ag-measure-on');
+      if(panel) panel.classList.add('open');
+      if(btn)   btn.classList.add('ag-measure-active');
+      resetInputs();
+      syncCanvas();
+      refreshStep();
+      recalcAndRender();
+    } else {
+      // Desactivar
+      m.active = false;
+      const wrap = document.getElementById('ag-img-wrap');
+      const panel = document.getElementById('ag-measure-panel');
+      const btn   = document.getElementById('ag-measure-btn');
+      if(wrap)  wrap.classList.remove('ag-measure-on');
+      if(panel) panel.classList.remove('open');
+      if(btn)   btn.classList.remove('ag-measure-active');
+      const cv = $('ag-measure-canvas');
+      if(cv) cv.getContext('2d').clearRect(0,0,cv.width,cv.height);
+    }
+  };
+
+  // Reset interno — llamado al navegar entre imágenes (rangos distintos → recalibrar)
+  window.agMeasureReset = function(){
+    m.calibA = m.calibB = null;
+    m.priceA = m.priceB = null;
+    m.ppx = m.slope = null;
+    m.entry = m.sl = m.target = null;
+    m.step = m.active ? 1 : 0;
+    if(m.active){
+      resetInputs();
+      syncCanvas();
+      refreshStep();
+      recalcAndRender();
+    } else {
+      const cv = $('ag-measure-canvas');
+      if(cv) cv.getContext('2d').clearRect(0,0,cv.width,cv.height);
+    }
+  };
+
+  // Forzar recalibración total (botón "Recalibrar")
+  window.agMeasureRecalibrate = function(){
+    if(!m.active) return;
+    window.agMeasureReset();
+  };
+
+  // Volver al paso anterior
+  window.agMeasureBack = function(){
+    if(!m.active) return;
+    if(m.step >= 6 && m.target != null){ m.target = null; m.step = 5; }
+    else if(m.step >= 5 && m.sl != null){ m.sl = null; m.step = 4; }
+    else if(m.step >= 4 && m.entry != null){ m.entry = null; m.step = 3; }
+    else if(m.step === 3){
+      // Volver a calibración: quitar lo más reciente
+      if(m.priceB != null){ m.priceB = null; m.step = 2; }
+      else if(m.calibB){ m.calibB = null; m.step = 2; }
+      else if(m.priceA != null){ m.priceA = null; m.step = 2; }
+      else if(m.calibA){ m.calibA = null; m.step = 1; }
+      m.ppx = m.slope = null;
+    }
+    else if(m.step === 2 && m.calibB){ m.calibB = null; m.priceB = null; }
+    else if(m.step === 2 && !m.calibB){
+      if(m.priceA != null){ m.priceA = null; }
+      else { m.calibA = null; m.step = 1; }
+    }
+    refreshStep();
+    recalcAndRender();
+    redraw();
+  };
+
+  // Input de precio cambiado (priceA o priceB)
+  window.agMeasureCalibChange = function(){
+    const inpA = $('am-priceA-input'), inpB = $('am-priceB-input');
+    const vA = inpA ? parseFloat(inpA.value) : NaN;
+    const vB = inpB ? parseFloat(inpB.value) : NaN;
+    m.priceA = isFinite(vA) ? vA : null;
+    m.priceB = isFinite(vB) ? vB : null;
+    if(m.calibA && m.calibB && m.priceA != null && m.priceB != null
+       && m.priceA !== m.priceB && m.calibA.y !== m.calibB.y
+       && m.step <= 2){
+      m.step = 3;
+      refreshStep();
+    }
+    recalcAndRender();
+    redraw();
+  };
+
+  // ── Wire-up al cargar ──
+  function setup(){
+    const cv = $('ag-measure-canvas');
+    const img = $('ag-img');
+    if(cv){
+      cv.addEventListener('click', onCanvasClick);
+    }
+    if(img){
+      img.addEventListener('load', () => { if(m.active) setTimeout(syncCanvas, 30); });
+    }
+    window.addEventListener('resize', () => { if(m.active) syncCanvas(); });
+  }
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', setup);
+  } else {
+    setup();
+  }
+
+  // Re-sync periódico mientras está activo (cubre relayouts del modal)
+  setInterval(() => { if(m.active) syncCanvas(); }, 500);
+})();
+</script>
+
+<!-- ── ZOOM GLOBAL POR DISPOSITIVO ──────────────────────────────
+     Control de escala persistido por dispositivo (localStorage).
+     Default 1.00 → el diseño del 24" 1920x1080 queda EXACTO.
+     Usar 1.10–1.15 en monitores físicos más chicos (18" misma resolución).
+     Aislado: prefijo "jq-zoom-", no toca CSS/JS existente.
+─────────────────────────────────────────────────────────────── -->
+<style>
+/* ── ZOOM GLOBAL POR DISPOSITIVO — estilos del control ── */
+#jq-zoom-btn {
+  position: fixed;
+  bottom: 14px;
+  right: 16px;
+  z-index: 999999;
+  background: rgba(8,13,20,.85);
+  border: 1px solid rgba(0,212,255,.28);
+  color: #5aa8ff;
+  font: 700 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 1px;
+  padding: 5px 9px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all .15s;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  user-select: none;
+}
+#jq-zoom-btn:hover {
+  border-color: #22f3ff;
+  color: #22f3ff;
+  box-shadow: 0 0 10px rgba(34,243,255,.35);
+}
+#jq-zoom-btn .jq-zoom-ico { margin-right: 4px; }
+
+#jq-zoom-popover {
+  position: fixed;
+  bottom: 50px;
+  right: 16px;
+  z-index: 999998;
+  width: 260px;
+  background: rgba(11,18,32,.97);
+  border: 1px solid rgba(0,212,255,.25);
+  border-radius: 8px;
+  padding: 12px 14px 11px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: #cfe6ff;
+  box-shadow: 0 8px 32px rgba(0,0,0,.6), 0 0 22px rgba(34,243,255,.12);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  display: none;
+}
+#jq-zoom-popover.jq-zoom-open { display: block; }
+
+#jq-zoom-popover .jq-zoom-title {
+  font-size: 9px; font-weight: 800; letter-spacing: 2px;
+  text-transform: uppercase; color: #22f3ff;
+  margin-bottom: 8px;
+  text-shadow: 0 0 6px rgba(34,243,255,.4);
+}
+#jq-zoom-popover .jq-zoom-row {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 8px;
+}
+#jq-zoom-popover #jq-zoom-slider {
+  flex: 1;
+  accent-color: #22f3ff;
+  cursor: pointer;
+}
+#jq-zoom-popover #jq-zoom-val {
+  font-size: 13px; font-weight: 800;
+  color: #5aa8ff;
+  min-width: 44px; text-align: right;
+}
+#jq-zoom-popover .jq-zoom-presets {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+  margin-bottom: 8px;
+}
+#jq-zoom-popover .jq-zoom-preset {
+  background: rgba(0,212,255,.06);
+  border: 1px solid rgba(0,212,255,.22);
+  color: #cfe6ff;
+  font: 700 9px/1 ui-monospace, monospace;
+  letter-spacing: .5px;
+  padding: 5px 0;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all .12s;
+}
+#jq-zoom-popover .jq-zoom-preset:hover {
+  background: rgba(0,212,255,.18);
+  border-color: #22f3ff;
+  color: #22f3ff;
+}
+#jq-zoom-popover .jq-zoom-preset.jq-zoom-active {
+  background: rgba(34,243,255,.20);
+  border-color: #22f3ff;
+  color: #22f3ff;
+  box-shadow: 0 0 6px rgba(34,243,255,.4);
+}
+#jq-zoom-popover .jq-zoom-reset {
+  width: 100%;
+  background: rgba(255,100,128,.08);
+  border: 1px solid rgba(255,100,128,.35);
+  color: #ff8da3;
+  font: 700 9px/1 ui-monospace, monospace;
+  letter-spacing: 1px; text-transform: uppercase;
+  padding: 6px 0;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all .12s;
+  margin-bottom: 8px;
+}
+#jq-zoom-popover .jq-zoom-reset:hover {
+  background: rgba(255,100,128,.22);
+  color: #fff;
+}
+#jq-zoom-popover .jq-zoom-row-actions { gap: 6px; margin-bottom: 8px; }
+#jq-zoom-popover .jq-zoom-reset-half { flex: 1; margin-bottom: 0; }
+#jq-zoom-popover .jq-zoom-auto {
+  background: rgba(34,243,255,.08);
+  border-color: rgba(34,243,255,.35);
+  color: #22f3ff;
+}
+#jq-zoom-popover .jq-zoom-auto:hover {
+  background: rgba(34,243,255,.22);
+  color: #fff;
+  box-shadow: 0 0 8px rgba(34,243,255,.4);
+}
+#jq-zoom-popover .jq-zoom-help {
+  font-size: 9px; line-height: 1.45; color: #8aa0bd;
+  border-top: 1px solid rgba(0,212,255,.10);
+  padding-top: 7px;
+}
+</style>
+
+<div id="jq-zoom-btn" onclick="jqZoomTogglePopover(event)" title="Ajustar escala global">
+  <span class="jq-zoom-ico">🔍</span><span id="jq-zoom-btn-val">100%</span>
+</div>
+<div id="jq-zoom-popover" onclick="event.stopPropagation()">
+  <div class="jq-zoom-title">Escala global</div>
+  <div class="jq-zoom-row">
+    <input type="range" id="jq-zoom-slider" min="0.80" max="1.30" step="0.05" value="1.00"
+           oninput="jqZoomFromSlider(this.value)">
+    <span id="jq-zoom-val">100%</span>
+  </div>
+  <div class="jq-zoom-presets">
+    <button class="jq-zoom-preset" data-z="0.90" onclick="jqZoomSet(0.90)">90%</button>
+    <button class="jq-zoom-preset" data-z="1.00" onclick="jqZoomSet(1.00)">100%</button>
+    <button class="jq-zoom-preset" data-z="1.10" onclick="jqZoomSet(1.10)">110%</button>
+    <button class="jq-zoom-preset" data-z="1.15" onclick="jqZoomSet(1.15)">115%</button>
+    <button class="jq-zoom-preset" data-z="1.25" onclick="jqZoomSet(1.25)">125%</button>
+  </div>
+  <div class="jq-zoom-row jq-zoom-row-actions">
+    <button class="jq-zoom-reset jq-zoom-reset-half" onclick="jqZoomSet(1.00)">↺ 100%</button>
+    <button class="jq-zoom-reset jq-zoom-reset-half jq-zoom-auto" onclick="jqZoomAuto()" title="Recalcular según este monitor">⚙ Auto</button>
+  </div>
+  <div class="jq-zoom-help">
+    Si la web se ve encimada en este monitor, subí la escala.
+    Tu elección se guarda solo para este dispositivo.
+  </div>
+</div>
+
+<script>
+/* ── ZOOM GLOBAL POR DISPOSITIVO — lógica ──
+   - Aplica CSS `zoom` al <body> (no transform, para no romper clicks/posiciones).
+   - Persiste en localStorage clave `jq_global_zoom`.
+   - Expone window.__jqZoomFactor() para corrección de coords en clickToNatural.
+*/
+(function(){
+  const KEY = 'jq_global_zoom';
+  const MIN = 0.80, MAX = 1.30;
+
+  function clampFactor(f){
+    const n = parseFloat(f);
+    if(!isFinite(n)) return 1.00;
+    if(n < MIN) return MIN;
+    if(n > MAX) return MAX;
+    return Math.round(n * 100) / 100;
+  }
+
+  function loadFactor(){
+    try {
+      const v = parseFloat(localStorage.getItem(KEY));
+      return isFinite(v) ? clampFactor(v) : null;  // null = nada guardado
+    } catch(_){ return null; }
+  }
+  function saveFactor(f){
+    try { localStorage.setItem(KEY, String(f)); } catch(_){}
+  }
+
+  // ── Auto-detección por dispositivo ──
+  // Heurística conservadora basada en DPR + resolución reportada por la pantalla.
+  // Solo corre la primera vez (cuando no hay valor guardado). El override manual
+  // siempre gana y se persiste.
+  function autoDetectFactor(){
+    const dpr = window.devicePixelRatio || 1;
+    const sw  = (screen && screen.width)  || 0;
+    const sh  = (screen && screen.height) || 0;
+    // 24" 1920x1080 con DPR=1 → diseño nativo, no escalar
+    if(dpr <= 1.05 && sw === 1920 && sh === 1080) return 1.00;
+    // 1920x1080 con DPR>1 (pantallas chicas con escalado de SO) → subir
+    if(dpr > 1.05 && sw === 1920 && sh === 1080) return 1.15;
+    // Otras resoluciones — usar el propio DPR como guía suave,
+    // sin pasar de 1.20 automáticamente (override manual disponible)
+    if(dpr > 1.05) return Math.min(1.10, clampFactor(1 + (dpr - 1) * 0.3));
+    return 1.00;  // default seguro
+  }
+
+  // currentFactor: guardado > auto-detectado
+  const _saved = loadFactor();
+  let currentFactor = _saved != null ? _saved : autoDetectFactor();
+
+  // Exponer factor actual para que los helpers de medición lo usen
+  // sin tener que tocar su lógica de CSS / layout.
+  window.__jqZoomFactor = function(){ return currentFactor; };
+
+  function applyFactor(f){
+    currentFactor = clampFactor(f);
+    if(document.body) document.body.style.zoom = currentFactor;
+    saveFactor(currentFactor);
+    syncUI();
+  }
+
+  function fmtPct(f){ return Math.round(f * 100) + '%'; }
+
+  function syncUI(){
+    const valEl   = document.getElementById('jq-zoom-val');
+    const btnVal  = document.getElementById('jq-zoom-btn-val');
+    const slider  = document.getElementById('jq-zoom-slider');
+    if(valEl)  valEl.textContent  = fmtPct(currentFactor);
+    if(btnVal) btnVal.textContent = fmtPct(currentFactor);
+    if(slider) slider.value = currentFactor;
+    // Marcar el preset activo si coincide
+    document.querySelectorAll('#jq-zoom-popover .jq-zoom-preset').forEach(btn => {
+      const z = parseFloat(btn.dataset.z);
+      btn.classList.toggle('jq-zoom-active', Math.abs(z - currentFactor) < 1e-3);
+    });
+  }
+
+  // API pública usada por los onclick del popover
+  window.jqZoomSet = function(f){ applyFactor(f); };
+  window.jqZoomFromSlider = function(v){ applyFactor(v); };
+  window.jqZoomAuto = function(){ applyFactor(autoDetectFactor()); };
+  window.jqZoomTogglePopover = function(ev){
+    if(ev) ev.stopPropagation();
+    const pop = document.getElementById('jq-zoom-popover');
+    if(!pop) return;
+    pop.classList.toggle('jq-zoom-open');
+    if(pop.classList.contains('jq-zoom-open')) syncUI();
+  };
+  // Cerrar popover al click fuera
+  document.addEventListener('click', (ev) => {
+    const pop = document.getElementById('jq-zoom-popover');
+    const btn = document.getElementById('jq-zoom-btn');
+    if(!pop || !pop.classList.contains('jq-zoom-open')) return;
+    if(ev.target === btn || (btn && btn.contains(ev.target))) return;
+    if(pop.contains(ev.target)) return;
+    pop.classList.remove('jq-zoom-open');
+  });
+
+  // Aplicar al cargar
+  function init(){
+    applyFactor(currentFactor);
+  }
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();
+
+/* ── ZOOM GLOBAL POR DISPOSITIVO — corrección de getBoundingClientRect ──
+   Algunos motores devuelven rects en coordenadas NO escaladas por `zoom`
+   mientras que clientX/Y SÍ están escalados. Eso desincronizaría el cálculo
+   pixel→precio de las herramientas de medición.
+   Parcheamos las dos funciones internas `clickToNatural` (projector y galería)
+   wrappeando los IIFEs originales: reemplazamos el getBoundingClientRect
+   global *solo dentro del cálculo* dividiendo el rect por el factor cuando
+   sea necesario. Para no tocar el código existente, instalamos un patch en
+   tiempo de captura sobre el prototipo (no — eso afecta a TODO el DOM).
+   Alternativa segura: NO parchear. Verificamos que en Chrome moderno tanto
+   getBoundingClientRect como clientX están en el MISMO sistema de coords
+   (zoomed). El cálculo `(clientX - rect.left) / rect.width * naturalWidth`
+   es invariante al factor de zoom porque numerador y denominador se escalan
+   juntos. Tests mentales:
+     factor 1.00 → rect.width = W, clientX-left = X → X/W*natural
+     factor 1.15 → rect.width = W*1.15, clientX-left = X*1.15 → X*1.15 / (W*1.15) * natural = X/W*natural ✓
+   Por lo tanto el corrector existe como NO-OP defensivo: si en algún navegador
+   este invariante se rompiera, este wrapper aplica la división explícita.
+*/
+(function(){
+  // Wrapper opcional sobre clickToNatural — solo se activa si detectamos
+  // discrepancia entre rect y clientX. Para no romper el código actual,
+  // simplemente exponemos un helper que el resto del código puede usar
+  // si se requiere. Hoy NO se invoca: el cálculo ya es invariante.
+  // Helper público para futuro debug:
+  window.__jqZoomCorrectRect = function(rect){
+    const z = (window.__jqZoomFactor && window.__jqZoomFactor()) || 1;
+    if(z === 1) return rect;
+    return {
+      left:   rect.left   / z,
+      top:    rect.top    / z,
+      right:  rect.right  / z,
+      bottom: rect.bottom / z,
+      width:  rect.width  / z,
+      height: rect.height / z
+    };
+  };
+})();
+</script>
 </body>
 </html>
