@@ -6292,8 +6292,14 @@ function renderDAE(stats, filters, verdict, vclass, conf, score, filtered){
     _monthMap.set(k, (_monthMap.get(k)||0) + rr);
   });
   const _monthKeys = [..._monthMap.keys()].sort();
-  let _mcum = 0;
-  let monthlySeries = _monthKeys.map(k => { _mcum += _monthMap.get(k); return { label:k, value:_mcum }; });
+  // ── Retorno MENSUAL % asumiendo riesgo 1% por trade ──
+  // Cada R ganado/perdido = 1% del balance ese mes (modelo lineal, sin compounding).
+  // Esto NO es cumulativo: cada barra del gráfico es el % real de ese mes.
+  const RISK_PER_TRADE_PCT = 1.0;
+  let monthlySeries = _monthKeys.map(k => ({
+    label: k,
+    value: _monthMap.get(k) * RISK_PER_TRADE_PCT  // R total del mes × 1% = % retorno mensual
+  }));
   // Fallback: si no se pudo parsear fecha en ningún trade, agrupar en 12 bloques
   // preservando el orden del CSV. Así igual ves la curva acumulada del archivo.
   let _monthlyIsFallback = false;
@@ -6303,12 +6309,10 @@ function renderDAE(stats, filters, verdict, vclass, conf, score, filtered){
       const buckets = Math.min(12, valid.length);
       const size = Math.ceil(valid.length / buckets);
       const arr = [];
-      let cum = 0;
       for(let i=0; i<buckets; i++){
         const slice = valid.slice(i*size, (i+1)*size);
         const sum = slice.reduce((a,b)=>a+b, 0);
-        cum += sum;
-        arr.push({ label:'Bloque '+(i+1), value:cum });
+        arr.push({ label:'Bloque '+(i+1), value: sum * RISK_PER_TRADE_PCT });
       }
       monthlySeries = arr;
       _monthlyIsFallback = true;
@@ -6404,6 +6408,28 @@ function renderDAE(stats, filters, verdict, vclass, conf, score, filtered){
         xLabelsSvg += `<text x="${x.toFixed(1)}" y="${labelY.toFixed(1)}" text-anchor="middle" font-family="ui-monospace,monospace" font-size="7" font-weight="700" fill="rgba(159,184,210,.85)" letter-spacing=".5">${lab.text}</text>`;
       });
     }
+    // Marcadores rojos en puntos negativos (para destacar meses malos)
+    const unit = opts.unit || 'R';
+    const markNegative = !!opts.markNegative;
+    let negDotsSvg = '';
+    if(markNegative){
+      pts.forEach((p, i) => {
+        const v = series[i].value;
+        if(v < 0){
+          negDotsSvg += `<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3.2" fill="#ff6480" stroke="rgba(11,18,32,.9)" stroke-width="1" filter="url(#${id}glow)"/>`;
+        }
+      });
+    }
+    // Eje Y: máx / mín como referencia visual
+    const showAxisVals = !!opts.showAxisVals;
+    let axisVals = '';
+    if(showAxisVals){
+      const fmtV = (v) => (v>=0?'+':'') + v.toFixed(1) + unit;
+      axisVals = `
+        <text x="${(W-padR+3).toFixed(1)}" y="${(padT+5).toFixed(1)}" text-anchor="start" font-family="ui-monospace,monospace" font-size="7" font-weight="700" fill="rgba(159,184,210,.55)">${fmtV(mx)}</text>
+        <text x="${(W-padR+3).toFixed(1)}" y="${(baseY-1).toFixed(1)}" text-anchor="start" font-family="ui-monospace,monospace" font-size="7" font-weight="700" fill="rgba(159,184,210,.55)">${fmtV(mn)}</text>
+      `;
+    }
     return `
       <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="width:100%;height:${H+4}px;display:block;">
         <defs>
@@ -6419,18 +6445,27 @@ function renderDAE(stats, filters, verdict, vclass, conf, score, filtered){
         <line x1="${padL}" y1="${zeroY.toFixed(1)}" x2="${(W-padR).toFixed(1)}" y2="${zeroY.toFixed(1)}" stroke="rgba(159,184,210,.18)" stroke-width="0.6" stroke-dasharray="2,3"/>
         <path d="${areaPath}" fill="url(#${id}fill)"/>
         <path d="${path}" fill="none" stroke="${color}" stroke-width="1.6" filter="url(#${id}glow)"/>
+        ${negDotsSvg}
         <circle cx="${last[0].toFixed(1)}" cy="${last[1].toFixed(1)}" r="3" fill="${color}" filter="url(#${id}glow)"/>
-        <text x="${(last[0]+5).toFixed(1)}" y="${(last[1]+3).toFixed(1)}" text-anchor="start" font-family="ui-monospace,monospace" font-size="9" font-weight="800" fill="${color}">${(lastV>=0?'+':'')+lastV.toFixed(1)}R</text>
+        <text x="${(last[0]+5).toFixed(1)}" y="${(last[1]+3).toFixed(1)}" text-anchor="start" font-family="ui-monospace,monospace" font-size="9" font-weight="800" fill="${color}">${(lastV>=0?'+':'')+lastV.toFixed(1)}${unit}</text>
+        ${axisVals}
         ${xTicksSvg}
         ${xLabelsSvg}
       </svg>
     `;
   };
 
-  const _monthlyEndVal = monthlySeries.length ? monthlySeries[monthlySeries.length-1].value : 0;
+  // Métricas resumidas del gráfico mensual (acumulado + peor / mejor mes)
+  const _monthlyTotalPct = monthlySeries.reduce((a, p) => a + p.value, 0);
+  const _monthlyNegCount = monthlySeries.filter(p => p.value < 0).length;
+  const _monthlyWorst    = monthlySeries.length
+    ? monthlySeries.reduce((w, p) => p.value < w.value ? p : w, monthlySeries[0])
+    : null;
   const _setupEndVal   = setupSeries.length   ? setupSeries[setupSeries.length-1].value   : 0;
-  const _monthlyColor  = _monthlyEndVal >= 0 ? '#22f3ff' : '#ff6480';
-  const _monthlyRgb    = _monthlyEndVal >= 0 ? '34,243,255' : '255,100,128';
+  // El color principal de la línea mensual se queda en cyan SciFi.
+  // Los meses negativos se destacan con puntos rojos sobre la línea.
+  const _monthlyColor  = '#22f3ff';
+  const _monthlyRgb    = '34,243,255';
   const _setupColor    = _setupEndVal   >= 0 ? '#2ee69c' : '#ff6480';
   const _setupRgb      = _setupEndVal   >= 0 ? '46,230,156' : '255,100,128';
   const _monthlyRangeLbl = monthlySeries.length
@@ -6470,18 +6505,22 @@ function renderDAE(stats, filters, verdict, vclass, conf, score, filtered){
       </div>
     </div>
 
-    <!-- ═══ BLOQUE 2: GRÁFICO MES A MES (CSV completo) ═══ -->
+    <!-- ═══ BLOQUE 2: RETORNO MENSUAL % (riesgo 1% por trade) ═══ -->
     <div style="padding:12px 13px 10px;border-bottom:1px solid var(--bd);">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">
-        <span style="font-size:10px;font-weight:800;color:var(--tx);letter-spacing:.5px;">Progreso mes a mes</span>
-        <span style="font-family:var(--mono);font-size:8px;font-weight:700;letter-spacing:1.2px;color:${_monthlyEndVal>=0?'var(--green2)':'var(--red2)'};">${(_monthlyEndVal>=0?'+':'')+_monthlyEndVal.toFixed(1)}R</span>
+        <span style="font-size:10px;font-weight:800;color:var(--tx);letter-spacing:.5px;">Retorno mensual % · riesgo 1%/trade</span>
+        <span style="font-family:var(--mono);font-size:9px;font-weight:800;letter-spacing:1.2px;color:${_monthlyTotalPct>=0?'var(--green2)':'var(--red2)'};">${(_monthlyTotalPct>=0?'+':'')+_monthlyTotalPct.toFixed(1)}%</span>
       </div>
       <div style="font-size:8px;color:var(--t3);font-weight:600;letter-spacing:.5px;margin-bottom:6px;">
         ${_monthlyIsFallback
           ? `${monthlySeries.length} bloques · ${_monthSource.length} trades · (sin fecha legible)`
-          : `${monthlySeries.length} ${monthlySeries.length===1?'mes':'meses'} · ${_monthlyRangeLbl} · respeta filtros del checklist`}
+          : `${monthlySeries.length} ${monthlySeries.length===1?'mes':'meses'} · ${_monthlyRangeLbl}` +
+            (_monthlyNegCount ? ` · <span style="color:var(--red2);font-weight:800;">${_monthlyNegCount} mes${_monthlyNegCount===1?'':'es'} en rojo</span>` : ` · <span style="color:var(--green2);">sin meses en rojo</span>`) +
+            (_monthlyWorst && _monthlyWorst.value < 0
+              ? ` · peor: <span style="color:var(--red2);font-weight:800;">${_monthlyWorst.label.replace('-','/')} (${_monthlyWorst.value.toFixed(1)}%)</span>`
+              : '')}
       </div>
-      ${buildLineChart(monthlySeries, {color:_monthlyColor, colorRgb:_monthlyRgb, id:'daeMonthly', xLabels: monthlyXLabels})}
+      ${buildLineChart(monthlySeries, {color:_monthlyColor, colorRgb:_monthlyRgb, id:'daeMonthly', xLabels: monthlyXLabels, unit:'%', markNegative:true, showAxisVals:true})}
     </div>
 
     <!-- ═══ BLOQUE 3: PROGRESO DEL SETUP EN EL TIEMPO (filtrados) ═══ -->
