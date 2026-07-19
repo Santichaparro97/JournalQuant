@@ -4138,7 +4138,13 @@ html, body { background: transparent !important; }
      ═════════════════════════════════════════════════════════════ -->
 <div id="panel-view" style="display:none;">
   <div id="pp-head">
-    <div class="pp-title">PANEL PRINCIPAL <em>// RESUMEN DE CUENTA</em></div>
+    <div class="pp-title">CALENDARIO <em>// RESUMEN DE CUENTA</em></div>
+    <div class="pp-head-ctrls">
+      <label class="pp-ctrl">
+        <span>Modelo</span>
+        <select id="pp-rr-sel" onchange="ppSetRRCol(this.value)" title="Columna de RR con la que se calcula todo el calendario"></select>
+      </label>
+    </div>
     <div class="pp-head-right">
       <span class="pp-htag" id="pp-data-tag">—</span>
     </div>
@@ -9652,6 +9658,22 @@ html, body { font-size: 13px; line-height: 1.45; }
 .pp-title em{ font-style:normal; color:var(--cyan); font-size:10px; letter-spacing:2px; }
 .pp-htag{ font-family:var(--mono); font-size:10px; font-weight:700; color:var(--t2); letter-spacing:1px; }
 
+/* ── CONTROLES DEL HEADER (selector de modelo / cuenta) ── */
+.pp-head-ctrls{ display:flex; align-items:center; gap:14px; }
+.pp-ctrl{ display:flex; align-items:center; gap:7px; }
+.pp-ctrl > span{
+  font-family:var(--mono); font-size:9px; font-weight:800; letter-spacing:1.4px;
+  color:var(--t3); text-transform:uppercase; white-space:nowrap;
+}
+.pp-ctrl select{
+  background:var(--s2); border:1px solid var(--bd2); color:var(--tx);
+  font-family:var(--mono); font-size:11px; font-weight:700;
+  padding:5px 9px; border-radius:6px; outline:none; cursor:pointer; max-width:190px;
+  transition:border-color .15s;
+}
+.pp-ctrl select:hover, .pp-ctrl select:focus{ border-color:var(--cyan); }
+.pp-ctrl select:disabled{ opacity:.5; cursor:default; }
+
 /* Sin scroll: todo el panel entra en la altura disponible (el "pantallazo rápido").
    Solo la lista de trades y la caja de modelos scrollean internamente si hay mucho contenido. */
 #pp-scroll{
@@ -10026,6 +10048,7 @@ function ppMetrics(){
 /* ── render maestro ── */
 function ppRender(){
   ppLoadBalance();
+  ppRenderRRSel();
   ppRenderKpis();
   ppRenderCalendar();
   ppRenderModels();
@@ -10035,6 +10058,22 @@ function ppRender(){
     const n = ppValidTrades().length;
     tag.textContent = PP_CONFIG.scriptUrl ? (n+' TRADES · CONECTADO') : (n ? n+' TRADES (demo)' : 'SIN CONEXIÓN · configurá Apps Script (Parte 2)');
   }
+}
+
+/** Llena el selector de modelo con las columnas RR de la planilla. */
+function ppRenderRRSel(){
+  const sel = document.getElementById('pp-rr-sel');
+  if(!sel) return;
+  const cols = ppRRCols();
+  const activa = ppRRCol();
+  if(!cols.length){
+    sel.innerHTML = '<option>'+_rgEsc(activa)+'</option>';
+    sel.disabled = true;
+    return;
+  }
+  sel.disabled = false;
+  sel.innerHTML = cols.map(c =>
+    '<option value="'+_rgEsc(c)+'"'+(c===activa?' selected':'')+'>'+_rgEsc(c)+'</option>').join('');
 }
 
 function ppRenderKpis(){
@@ -10056,6 +10095,15 @@ function ppRenderKpis(){
     '<div class="pp-kpi"><div class="pp-kpi-l">Ganadas / Perdidas</div>'+
     '<div class="pp-kpi-v"><span class="pp-g">'+m.wins+'</span> <span style="color:var(--t3)">/</span> <span class="pp-r">'+m.losses+'</span></div>'+
     '<div class="pp-kpi-s"><b>'+m.wins+' W</b> · <i>'+m.losses+' L</i></div></div>'
+  );
+  // Mes cerrado: el % del mes que se está viendo, con el modelo elegido
+  cards.push(
+    '<div class="pp-kpi '+(m.monthPct>0?'pp-pos':m.monthPct<0?'pp-neg':'')+'">'+
+    '<div class="pp-kpi-l">Mes Cerrado</div>'+
+    '<div class="pp-kpi-v '+(m.monthPct>0?'pp-g':m.monthPct<0?'pp-r':'')+'">'+
+      (m.month.length ? ppFmtPct(m.monthPct) : '—')+'</div>'+
+    '<div class="pp-kpi-s">'+PP_MESES[ppState.viewM]+' '+ppState.viewY+
+      (m.month.length ? ' · '+m.month.length+' trades' : ' · sin trades')+'</div></div>'
   );
 
   // KPI 4: PNL de la cuenta (global) o setup de saldo inicial
@@ -12030,14 +12078,40 @@ async function rgCreateSheet(){
 const PP_MAP = {
   colFecha:  'Fecha',          // dd/mm en la planilla
   colAnio:   'Año',            // el año va en columna aparte
-  colRR:     'iFVG - RR',      // resultado oficial para el calendario
+  colRR:     'iFVG - RR',      // resultado por defecto (se puede cambiar en la UI)
   colRES:    'iFVG - RES',     // Win / Loss / No fill
   colModelo: 'SETUP',          // alimenta la caja "Modelos de entrada"
   colDir:    'Bias',
   colInst:   '',               // la planilla no tiene columna de instrumento
   colNotas:  'Observaciones',
+  colCuenta: 'Cuenta',         // se crea desde el Calendario
   riesgoPct: 1                 // 1R = 1% de la cuenta
 };
+
+const PP_RR_KEY = 'pp_rr_col_v1';   // modelo elegido, recordado entre sesiones
+
+/** Columnas de RR disponibles en la planilla (para el selector de modelo). */
+function ppRRCols(){
+  const t = ppState.rawCols || [];
+  return t.filter(c => /\brr\b/.test(_rgNorm(c)));
+}
+
+/** Columna RR activa: la elegida por el usuario si sigue existiendo. */
+function ppRRCol(){
+  const disponibles = ppRRCols();
+  let elegida = null;
+  try{ elegida = localStorage.getItem(PP_RR_KEY); }catch(_){}
+  if(elegida && disponibles.indexOf(elegida) >= 0) return elegida;
+  if(disponibles.indexOf(PP_MAP.colRR) >= 0) return PP_MAP.colRR;
+  return disponibles[0] || PP_MAP.colRR;
+}
+
+/** Cambia el modelo y recalcula todo el calendario. */
+async function ppSetRRCol(col){
+  try{ localStorage.setItem(PP_RR_KEY, col); }catch(_){}
+  await ppLoad();
+  ppRender();
+}
 
 /** Busca una columna por nombre exacto y, si no está, por aproximación. */
 function _ppCol(fila, preferida, alternativas){
@@ -12076,14 +12150,17 @@ async function ppLoad(){
     if(!filas.length){ ppState.trades = []; ppState.loaded = true; return; }
 
     const muestra = filas[0].d;
+    ppState.rawCols = Object.keys(muestra);          // alimenta el selector de modelo
+
     const cFecha = _ppCol(muestra, PP_MAP.colFecha, ['fecha','date']);
     const cAnio  = _ppCol(muestra, PP_MAP.colAnio,  ['año','anio','year']);
-    const cRR    = _ppCol(muestra, PP_MAP.colRR,    ['ifvg rr','rr']);
+    const cRR    = _ppCol(muestra, ppRRCol(),       ['ifvg rr','rr']);
     const cRES   = _ppCol(muestra, PP_MAP.colRES,   ['ifvg res','resultado']);
     const cMod   = _ppCol(muestra, PP_MAP.colModelo,['setup','modelo']);
     const cDir   = _ppCol(muestra, PP_MAP.colDir,   ['bias','direccion']);
     const cInst  = _ppCol(muestra, PP_MAP.colInst,  ['instrumento','activo','simbolo']);
     const cNotas = _ppCol(muestra, PP_MAP.colNotas, ['observaciones','notas']);
+    const cCuenta= _ppCol(muestra, PP_MAP.colCuenta,['cuenta','account']);
 
     const out = [];
     filas.forEach(({id, d}) => {
@@ -12099,7 +12176,9 @@ async function ppLoad(){
         direccion:   cDir  ? String(d[cDir]  || '') : '',
         modelo:      cMod  ? String(d[cMod]  || '') : '',
         notas:       cNotas? String(d[cNotas]|| '') : '',
-        res:         cRES  ? String(d[cRES]  || '') : ''
+        res:         cRES  ? String(d[cRES]  || '') : '',
+        cuenta:      cCuenta ? String(d[cCuenta] || '') : '',
+        _raw:        d                                     // fila cruda: la usa el modal
       });
     });
     ppState.trades = out;
