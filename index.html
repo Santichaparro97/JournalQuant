@@ -3985,20 +3985,25 @@ html, body { background: transparent !important; }
   <div id="rg-head">
     <div class="rg-title">REGISTRO <em>// PLANILLA DE TRADES</em></div>
     <div class="rg-head-right">
-      <select class="rg-sel" id="rg-sheet-sel" onchange="rgSwitchSheet(this.value)" title="Hoja de la planilla"></select>
       <span class="rg-htag" id="rg-tag">—</span>
       <span id="rg-saving">● guardando…</span>
+      <select class="rg-sel" id="rg-sheet-sel" onchange="rgSwitchSheet(this.value)" title="Elegir plantilla"></select>
       <button class="rg-btn" onclick="rgNewSheet()" title="Crear otra plantilla desde cero">+ Plantilla</button>
-      <button class="rg-add" id="rg-add-btn" onclick="rgAddRow()" title="Agregar un trade al final">+ Trade</button>
-      <button class="rg-btn" onclick="rgCollapseAll()" title="Contraer todos los bloques de 50">⊟</button>
-      <button class="rg-btn" onclick="rgExpandAll()" title="Expandir todos los bloques">⊞</button>
-      <button class="rg-btn" onclick="rgReload()" title="Volver a leer desde la base">↻</button>
-      <button class="rg-btn" onclick="rgToggleTypes()" title="Revisar y corregir el tipo de cada columna">⚙</button>
+      <button class="rg-add" id="rg-add-btn" onclick="rgAddRow()" title="Cargar un trade nuevo">+ Trade</button>
+      <div class="rg-more-wrap">
+        <button class="rg-btn rg-more" onclick="rgToggleMore(event)" title="Más opciones">⋯</button>
+        <div id="rg-more-menu" style="display:none;">
+          <button onclick="rgMoreDo('collapse')">⊟ Contraer todos los bloques</button>
+          <button onclick="rgMoreDo('expand')">⊞ Expandir todos los bloques</button>
+          <div class="rg-more-sep"></div>
+          <button onclick="rgMoreDo('addcol')">＋ Agregar columna</button>
+          <button onclick="rgMoreDo('delcol')">－ Eliminar columna</button>
+          <div class="rg-more-sep"></div>
+          <button onclick="rgMoreDo('types')">⚙ Tipos de columna</button>
+          <button onclick="rgMoreDo('reload')">↻ Actualizar desde la base</button>
+        </div>
+      </div>
     </div>
-  </div>
-
-  <div class="rg-hint">
-    <b>Click</b> selecciona · <b>Click de nuevo</b> o <b>Enter</b> edita · <b>Tab</b> y <b>flechas</b> para moverte · <b>Supr</b> borra · Se guarda solo · <b>Click en el número de fila</b> para insertar o eliminar · <b>⊟ / ⊞</b> contraen los bloques de 50
   </div>
 
   <div id="rg-main">
@@ -10290,18 +10295,36 @@ async function ppDeleteTrade(id){
 .rg-title em{ font-style:normal; color:var(--cyan); font-size:10px; letter-spacing:2px; }
 .rg-head-right{ display:flex; align-items:center; gap:8px; min-width:0; }
 .rg-htag{ font-family:var(--mono); font-size:10px; font-weight:700; color:var(--t2); letter-spacing:.5px; white-space:nowrap; }
+/* Barra de acciones: 3 controles, un escalón más grandes */
 .rg-sel{
   background:var(--s2); border:1px solid var(--bd2); color:var(--tx);
-  font-family:var(--mono); font-size:11px; font-weight:700; padding:5px 8px; border-radius:6px; outline:none; cursor:pointer;
-  max-width:200px;
+  font-family:var(--mono); font-size:12px; font-weight:700; padding:8px 11px; border-radius:7px; outline:none; cursor:pointer;
+  max-width:220px;
 }
 .rg-sel:focus{ border-color:var(--cyan); }
 .rg-btn{
   background:var(--s2); border:1px solid var(--bd2); color:var(--t2);
-  font-family:var(--mono); font-size:10px; font-weight:700; letter-spacing:.5px;
-  padding:6px 11px; border-radius:6px; cursor:pointer; transition:all .15s; white-space:nowrap;
+  font-family:var(--mono); font-size:12px; font-weight:700; letter-spacing:.5px;
+  padding:8px 14px; border-radius:7px; cursor:pointer; transition:all .15s; white-space:nowrap;
 }
 .rg-btn:hover{ border-color:var(--cyan); color:var(--cyan); background:rgba(0,229,212,.07); }
+
+/* Menú ⋯ */
+.rg-more-wrap{ position:relative; }
+.rg-more{ padding:8px 12px; letter-spacing:0; }
+#rg-more-menu{
+  position:absolute; right:0; top:calc(100% + 6px); z-index:400;
+  background:var(--s2); border:1px solid var(--bd2); border-radius:9px; padding:5px;
+  min-width:238px; box-shadow:0 12px 36px rgba(0,0,0,.6);
+  display:flex; flex-direction:column; gap:2px;
+}
+#rg-more-menu button{
+  background:none; border:none; color:var(--tx); text-align:left;
+  font-family:var(--sans); font-size:12.5px; font-weight:600; padding:9px 11px; border-radius:6px;
+  cursor:pointer; transition:background .12s; white-space:nowrap;
+}
+#rg-more-menu button:hover{ background:rgba(0,229,212,.12); color:var(--cyan); }
+.rg-more-sep{ height:1px; background:var(--bd); margin:4px 2px; }
 
 #rg-main{ flex:1; min-height:0; display:flex; flex-direction:column; }
 #rg-status{ flex-shrink:0; }
@@ -10314,20 +10337,34 @@ async function ppDeleteTrade(id){
 
 /* ── GRILLA ── */
 #rg-grid-wrap{ flex:1; min-height:0; overflow:auto; }
-#rg-table{ border-collapse:separate; border-spacing:0; font-family:var(--mono); font-size:11px; }
+/* table-layout:fixed + anchos por <colgroup>: con ancho automático el
+   navegador re-medía las 12.000 celdas ante cualquier cambio de estilo
+   (47 ms por tecla). Con ancho fijo el recálculo es local e instantáneo,
+   y además garantiza que las columnas nunca se corran. */
+#rg-table{
+  border-collapse:separate; border-spacing:0; font-family:var(--mono); font-size:11px;
+  table-layout:fixed;
+}
+/* Celdas de datos: fondo más tenue que el encabezado, para que el
+   encabezado quede claramente por encima. Solo cambia el color: nunca
+   el tamaño ni la posición, así el hover no mueve la grilla. */
 #rg-table th, #rg-table td{
   border-right:1px solid var(--bd); border-bottom:1px solid rgba(30,45,61,.55);
-  padding:0; white-space:nowrap; background:var(--s1);
+  padding:0; white-space:nowrap; background:rgba(12,17,24,.55);
 }
+#rg-table tbody td{ opacity:.82; }
+/* El encabezado queda fijo al scrollear: tiene que ser opaco, si no se
+   verían los datos pasando por debajo. */
 #rg-table thead th{
   position:sticky; top:0; z-index:20;
-  background:var(--s2); color:var(--t2);
-  font-size:9px; font-weight:800; letter-spacing:.8px; text-transform:uppercase;
-  padding:8px 9px; text-align:left; border-bottom:2px solid var(--bd2);
+  background:var(--s3); color:var(--tx);
+  font-size:11px; font-weight:800; letter-spacing:.8px; text-transform:uppercase;
+  padding:9px 10px; text-align:left; border-bottom:2px solid var(--cyan);
   max-width:190px; overflow:hidden; text-overflow:ellipsis;
+  opacity:1;
 }
 #rg-table thead th .rg-th-type{
-  display:block; font-size:7.5px; font-weight:600; color:var(--t3); letter-spacing:.5px; margin-top:2px; text-transform:none;
+  display:block; font-size:8.5px; font-weight:600; color:var(--t3); letter-spacing:.5px; margin-top:3px; text-transform:none;
 }
 /* Primera columna (n° de fila) fija a la izquierda */
 #rg-table th.rg-fix, #rg-table td.rg-fix{
@@ -10336,8 +10373,14 @@ async function ppDeleteTrade(id){
 }
 #rg-table thead th.rg-fix{ z-index:30; }
 #rg-table td.rg-fix{ color:var(--t3); font-size:9.5px; font-weight:700; padding:0 8px; }
-#rg-table tbody tr:hover td{ background:rgba(0,229,212,.045); }
+/* Resaltado por hover: SOLO color. El indicador ⋯ está siempre presente
+   (invisible) para que al aparecer no ensanche la celda ni corra la tabla. */
+#rg-table tbody tr:hover td{ background:rgba(0,229,212,.05); opacity:1; }
 #rg-table tbody tr:hover td.rg-fix{ background:var(--s3); color:var(--cyan); }
+#rg-table td.rg-fix::after{
+  content:' ⋯'; color:var(--cyan); font-size:9px; visibility:hidden;
+}
+#rg-table tbody tr:hover td.rg-fix::after{ visibility:visible; }
 
 .rg-cell{ display:block; padding:6px 9px; max-width:190px; overflow:hidden; text-overflow:ellipsis; }
 .rg-c-num{ text-align:right; font-variant-numeric:tabular-nums; color:var(--tx); }
@@ -10395,7 +10438,17 @@ async function ppDeleteTrade(id){
 
 /* ── EDICIÓN ── */
 #rg-table td[data-c]{ cursor:cell; }
-#rg-table td.rg-sel{ box-shadow:inset 0 0 0 2px var(--cyan); background:rgba(0,229,212,.06) !important; }
+/* Celda activa: recuadro marcado y sin transición, para que el salto entre
+   celdas se vea inmediato al moverse con el teclado. */
+/* Solo sombra interior y color: sin position/z-index, que obligaban a
+   recrear el contexto de apilamiento en cada movimiento. */
+#rg-table td.rg-sel{
+  box-shadow:inset 0 0 0 2px var(--cyan);
+  background:rgba(0,229,212,.14) !important;
+  opacity:1 !important;
+  transition:none;
+}
+#rg-table td.rg-sel .rg-cell{ color:var(--tx); }
 #rg-table td.rg-editing{ box-shadow:inset 0 0 0 2px var(--cyan); padding:0; }
 #rg-table td.rg-flash-ok{ box-shadow:inset 0 0 0 2px var(--green2); transition:box-shadow .4s; }
 #rg-table td.rg-flash-err{ box-shadow:inset 0 0 0 2px var(--red2); background:rgba(239,68,68,.12) !important; }
@@ -10417,7 +10470,6 @@ async function ppDeleteTrade(id){
 .rg-add:hover{ filter:brightness(1.1); transform:translateY(-1px); }
 .rg-add:disabled{ opacity:.5; cursor:default; transform:none; }
 #rg-table td.rg-fix{ cursor:pointer; }
-#rg-table tbody tr:hover td.rg-fix::after{ content:' ✕'; color:var(--red2); font-size:8px; }
 
 #rg-toast{
   position:fixed; bottom:20px; left:50%; transform:translateX(-50%) translateY(80px);
@@ -10431,11 +10483,6 @@ async function ppDeleteTrade(id){
 #rg-toast.err{ border-color:rgba(239,68,68,.5); color:var(--red2); }
 #rg-toast.warn{ border-color:rgba(245,158,11,.5); color:var(--amber2); }
 
-.rg-hint{
-  flex-shrink:0; padding:5px 14px; font-family:var(--mono); font-size:9px; color:var(--t3);
-  background:var(--s2); border-bottom:1px solid var(--bd); letter-spacing:.3px;
-}
-.rg-hint b{ color:var(--t2); }
 
 /* ── GRUPOS DE 50 FILAS ── */
 #rg-table tr.rg-group{ cursor:pointer; }
@@ -10471,7 +10518,6 @@ async function ppDeleteTrade(id){
 #rg-rowmenu button:hover{ background:rgba(0,229,212,.12); color:var(--cyan); }
 #rg-rowmenu button.rg-rm-del{ color:var(--red2); }
 #rg-rowmenu button.rg-rm-del:hover{ background:rgba(239,68,68,.12); }
-#rg-table tbody tr:hover td.rg-fix::after{ content:' ⋯'; color:var(--cyan); font-size:9px; }
 
 /* ── MODAL NUEVA PLANTILLA ── */
 #rg-ns-modal{
@@ -10818,7 +10864,13 @@ function rgRender(){
   const nCols = rgState.headers.length;
   const total = rgState.rows.length;
 
-  let html = '<thead><tr><th class="rg-fix">#</th>';
+  // Ancho fijo por columna según su tipo (requisito de table-layout:fixed)
+  const RG_W = { num:92, date:98, time:86, bool:70, result:106, link:58, select:134, text:220 };
+  let html = '<colgroup><col style="width:46px">' +
+    rgState.headers.map((_, c) => '<col style="width:'+(RG_W[rgState.types[c]] || 130)+'px">').join('') +
+    '</colgroup>';
+
+  html += '<thead><tr><th class="rg-fix">#</th>';
   rgState.headers.forEach((h, c) => {
     const t = rgState.types[c];
     const fx = rgState.formulaCols[c] ? ' ƒ' : '';
@@ -10863,12 +10915,41 @@ function rgRender(){
   }
   html += parts.join('') + '</tbody>';
   table.innerHTML = html;
+
+  // Índice fila → <tr>: permite ubicar cualquier celda al instante
+  rgState._rowEls = new Map();
+  table.querySelectorAll('tbody tr[data-r]').forEach(tr => rgState._rowEls.set(+tr.dataset.r, tr));
+  _rgSelEl = null;
+
   rgBindGrid();
 
   const st = document.getElementById('rg-status');
   if(st) st.innerHTML = '';
   const wrap = document.getElementById('rg-grid-wrap');
   if(wrap) wrap.style.display = '';
+}
+
+/* ── menú ⋯ ── */
+function rgToggleMore(e){
+  if(e) e.stopPropagation();
+  const m = document.getElementById('rg-more-menu');
+  if(!m) return;
+  const abierto = m.style.display === 'flex';
+  m.style.display = abierto ? 'none' : 'flex';
+  if(!abierto) setTimeout(()=> document.addEventListener('click', rgCloseMore, { once:true }), 0);
+}
+function rgCloseMore(){
+  const m = document.getElementById('rg-more-menu');
+  if(m) m.style.display = 'none';
+}
+function rgMoreDo(accion){
+  rgCloseMore();
+  if(accion === 'collapse') rgCollapseAll();
+  else if(accion === 'expand') rgExpandAll();
+  else if(accion === 'types')  rgToggleTypes();
+  else if(accion === 'reload') rgReload();
+  else if(accion === 'addcol') rgAddColumn();
+  else if(accion === 'delcol') rgDeleteColumn();
 }
 
 /* ── grupos de filas ── */
@@ -11549,8 +11630,13 @@ function rgIsEditable(c){
   return !rgState.formulaCols[c];
 }
 
+/** Ubica una celda sin recorrer el DOM: usa el índice de filas armado al
+    renderizar y salta directo por posición. Antes, cada movimiento hacía
+    un querySelector sobre las 12.000 celdas (≈37 ms por tecla). */
 function rgCellEl(r, c){
-  return document.querySelector('#rg-table td[data-r="'+r+'"][data-c="'+c+'"]');
+  const tr = rgState._rowEls && rgState._rowEls.get(r);
+  if(!tr) return null;
+  return tr.children[c + 1] || null;   // +1: la primera celda es el n° de fila
 }
 
 function rgRepaintCell(r, c){
@@ -11559,14 +11645,52 @@ function rgRepaintCell(r, c){
   td.innerHTML = rgCellHtml(rgState.rows[r][c], rgState.types[c], rgState.formulaCols[c]);
 }
 
+/** Guarda la celda marcada para no tener que buscarla entre miles después. */
+let _rgSelEl = null;
+
 function rgSelect(r, c, scroll){
-  document.querySelectorAll('#rg-table td.rg-sel').forEach(td => td.classList.remove('rg-sel'));
-  if(r == null) { rgState.sel = null; return; }
+  if(r == null){
+    if(_rgSelEl){ _rgSelEl.classList.remove('rg-sel'); _rgSelEl = null; }
+    rgState.sel = null; return;
+  }
   const td = rgCellEl(r, c);
   if(!td) return;
+
+  // Mover las clases es prácticamente gratis (0,005 ms): eso da la
+  // respuesta visual inmediata al apretar la tecla.
+  if(_rgSelEl) _rgSelEl.classList.remove('rg-sel');
   td.classList.add('rg-sel');
+  _rgSelEl = td;
   rgState.sel = { r, c };
-  if(scroll !== false) td.scrollIntoView({ block:'nearest', inline:'nearest' });
+
+  // El ajuste de scroll necesita leer geometría, y leerla justo después de
+  // cambiar una clase obliga a recalcular las 12.000 celdas (~37 ms). Por eso
+  // se difiere al próximo frame y se agrupa: si mantenés una flecha apretada,
+  // se hace UN solo ajuste por frame en vez de uno por tecla.
+  if(scroll !== false) rgScheduleScroll();
+}
+
+let _rgScrollRaf = null;
+function rgScheduleScroll(){
+  if(_rgScrollRaf) return;                  // ya hay uno encolado para este frame
+  _rgScrollRaf = requestAnimationFrame(() => { _rgScrollRaf = null; rgApplyScroll(); });
+}
+
+/** Acerca la celda activa si quedó fuera de vista. Separada de rgSelect
+    para poder llamarla sin depender del frame (y para poder probarla). */
+function rgApplyScroll(){
+  const td = _rgSelEl;
+  const wrap = document.getElementById('rg-grid-wrap');
+  if(!td || !wrap) return;
+  const t = td.getBoundingClientRect(), w = wrap.getBoundingClientRect();
+  const topPad = 40, leftPad = 48;          // encabezado y columna de nº fijos
+  let dx = 0, dy = 0;
+  if(t.top    < w.top + topPad)   dy = t.top - (w.top + topPad);
+  else if(t.bottom > w.bottom)    dy = t.bottom - w.bottom;
+  if(t.left   < w.left + leftPad) dx = t.left - (w.left + leftPad);
+  else if(t.right > w.right)      dx = t.right - w.right;
+  if(dx) wrap.scrollLeft += dx;
+  if(dy) wrap.scrollTop  += dy;
 }
 
 /* ── inicio de edicion ── */
