@@ -6331,15 +6331,30 @@ function trClick(e, idx){
     return;
   }
 
-  if(typeof agState === 'undefined' || !agState || !agState.trades || !agState.trades.length) return;
+  if(typeof agState === 'undefined' || !agState) return;
+  if(typeof agOpen !== 'function') return;
 
-  // Buscar índice del trade en la galería actual por coincidencia de link
-  const matchIdx = agState.trades.findIndex(t =>
-    (t[imgCol] || '').toString().trim() === link
-  );
-  if(matchIdx < 0) return;
+  const linkDe = t => (t[imgCol] || '').toString().trim();
 
-  if(typeof agOpen === 'function') agOpen(matchIdx);
+  // agState.trades es un efecto secundario de updateGallery(): si la galería
+  // nunca se renderizó, o se renderizó con otro filtro, este trade no está y
+  // antes se salía en silencio (la imagen simplemente no abría). Ahora se
+  // reconstruye la lista a demanda desde los trades visibles.
+  let matchIdx = (agState.trades || []).findIndex(t => linkDe(t) === link);
+
+  if(matchIdx < 0){
+    const conImagen = list.filter(t => linkDe(t) !== '');
+    matchIdx = conImagen.findIndex(t => linkDe(t) === link);
+    if(matchIdx >= 0){
+      agState.trades = conImagen;
+    } else {
+      // El trade tiene link pero no está en la lista visible: abrirlo solo.
+      agState.trades = [trade];
+      matchIdx = 0;
+    }
+  }
+
+  agOpen(matchIdx);
 }
 
 // ══════════════════════════════════════════════
@@ -6630,27 +6645,37 @@ function agRender() {
     // Reset any previous inline size constraints before loading new src
     imgEl.style.maxWidth  = '';
     imgEl.style.maxHeight = '';
-    imgEl.src = imgSrc;
 
-    imgEl.onload = () => {
+    const reveal = () => {
       const nw = imgEl.naturalWidth;
       const nh = imgEl.naturalHeight;
 
       // Cap: never render beyond original resolution (prevents upscaling blur)
-      if (imgEl.clientWidth > nw || imgEl.clientHeight > nh) {
+      if (nw && nh && (imgEl.clientWidth > nw || imgEl.clientHeight > nh)) {
         imgEl.style.maxWidth  = 'min(80vw, ' + nw + 'px)';
         imgEl.style.maxHeight = 'min(80vh, ' + nh + 'px)';
       }
 
-      // Only reveal after image is fully decoded at correct size
       imgEl.classList.remove('fading');
       imgEl.classList.add('visible');
     };
 
-    imgEl.onerror = () => {
-      imgEl.classList.remove('fading');
-      imgEl.classList.add('visible');
-    };
+    // IMPORTANTE: enganchar los handlers ANTES de asignar src. Si la imagen ya
+    // está en cache, el evento load dispara al asignar .src y un handler puesto
+    // después nunca corre: la imagen quedaba invisible con el panel abierto.
+    imgEl.onload  = reveal;
+    imgEl.onerror = reveal;
+
+    if (!imgSrc) {           // sin link no hay evento que esperar
+      imgEl.removeAttribute('src');
+      reveal();
+      return;
+    }
+
+    imgEl.src = imgSrc;
+
+    // Red de seguridad: si ya estaba completa antes de enganchar, revelar igual.
+    if (imgEl.complete) reveal();
   }, 120);
 
   // Counter
@@ -13697,6 +13722,143 @@ async function sbBootData(){
   }
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
   else start();
+})();
+</script>
+
+<!-- ═════════════════════════════════════════════════════════════
+     PESTAÑAS ARRASTRABLES — reordenar #main-nav-tabs (autocontenido)
+     Mantener el click apretado y arrastrar para reordenar.
+     El orden se guarda en localStorage (jq_nav_order).
+     Para revertir: borrar este <style> + <script>.
+     ═════════════════════════════════════════════════════════════ -->
+<style id="nav-drag-styles">
+#main-nav-tabs .mnt-tab { touch-action: none; }
+#main-nav-tabs .mnt-tab.mnt-dragging {
+  /* Solo transform/opacity: se compone en GPU, no dispara layout. */
+  z-index: 5;
+  opacity: .9;
+  cursor: grabbing;
+  transition: none;
+  box-shadow: 0 6px 18px rgba(0,0,0,.45);
+}
+/* Los que ceden el paso se deslizan; el arrastrado no (lo mueve el puntero). */
+#main-nav-tabs .mnt-tab:not(.mnt-dragging) { transition: transform .16s ease, all .18s; }
+</style>
+<script id="nav-drag">
+(function(){
+  const KEY = 'jq_nav_order';
+  const NAV = () => document.getElementById('main-nav-tabs');
+
+  function tabs(nav){ return Array.from(nav.querySelectorAll('.mnt-tab')); }
+
+  /* ── Restaurar orden guardado ── */
+  function restore(){
+    const nav = NAV(); if(!nav) return;
+    let saved;
+    try { saved = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch(_){ return; }
+    if(!Array.isArray(saved) || !saved.length) return;
+    const byView = new Map(tabs(nav).map(t => [t.dataset.view, t]));
+    // Solo reubica las que existan; las nuevas quedan al final intactas.
+    saved.forEach(v => { const t = byView.get(v); if(t) nav.appendChild(t); });
+  }
+
+  function save(){
+    const nav = NAV(); if(!nav) return;
+    try { localStorage.setItem(KEY, JSON.stringify(tabs(nav).map(t => t.dataset.view))); }
+    catch(_){}
+  }
+
+  /* ── Arrastre ── */
+  const UMBRAL = 5;            // px antes de considerarlo arrastre y no click
+  let drag = null;
+  let huboDrag = false;
+
+  function onPointerDown(e){
+    if(e.button !== 0 && e.pointerType === 'mouse') return;
+    const tab = e.target.closest('.mnt-tab');
+    const nav = NAV();
+    if(!tab || !nav || !nav.contains(tab)) return;
+
+    drag = {
+      tab, nav,
+      startX: e.clientX,
+      dx: 0,
+      moving: false,
+      ancho: tab.getBoundingClientRect().width
+    };
+    huboDrag = false;
+    tab.setPointerCapture(e.pointerId);
+  }
+
+  function onPointerMove(e){
+    if(!drag) return;
+    drag.dx = e.clientX - drag.startX;
+
+    if(!drag.moving){
+      if(Math.abs(drag.dx) < UMBRAL) return;   // todavía puede ser un click
+      drag.moving = true;
+      huboDrag = true;
+      drag.tab.classList.add('mnt-dragging');
+    }
+
+    drag.tab.style.transform = 'translateX(' + drag.dx + 'px)';
+
+    // ¿Cruzó el centro de un vecino? Entonces intercambiar posición.
+    const r = drag.tab.getBoundingClientRect();
+    const centro = r.left + r.width / 2;
+
+    for(const otro of tabs(drag.nav)){
+      if(otro === drag.tab) continue;
+      const ro = otro.getBoundingClientRect();
+      const co = ro.left + ro.width / 2;
+      const despues = drag.tab.compareDocumentPosition(otro) & Node.DOCUMENT_POSITION_FOLLOWING;
+
+      if((despues && centro > co) || (!despues && centro < co)){
+        // Reubicar en el DOM y recalibrar el origen para que no salte.
+        const antes = drag.tab.getBoundingClientRect().left;
+        drag.nav.insertBefore(drag.tab, despues ? otro.nextSibling : otro);
+        const ahora = drag.tab.getBoundingClientRect().left;
+        drag.startX += (ahora - antes);
+        drag.dx = e.clientX - drag.startX;
+        drag.tab.style.transform = 'translateX(' + drag.dx + 'px)';
+        break;
+      }
+    }
+  }
+
+  function onPointerUp(e){
+    if(!drag) return;
+    const { tab } = drag;
+    try { tab.releasePointerCapture(e.pointerId); } catch(_){}
+    tab.style.transform = '';
+    tab.classList.remove('mnt-dragging');
+    if(drag.moving) save();
+    drag = null;
+  }
+
+  /* Si hubo arrastre, cancelar el click para no cambiar de vista sin querer.
+     Fase de captura: corre antes del onclick inline de cada botón. */
+  function onClickCapture(e){
+    if(!huboDrag) return;
+    huboDrag = false;
+    e.preventDefault();
+    e.stopPropagation();
+  }
+
+  function init(){
+    const nav = NAV(); if(!nav) return;
+    restore();
+    nav.addEventListener('pointerdown', onPointerDown);
+    nav.addEventListener('pointermove', onPointerMove);
+    nav.addEventListener('pointerup', onPointerUp);
+    nav.addEventListener('pointercancel', onPointerUp);
+    nav.addEventListener('click', onClickCapture, true);
+    nav.addEventListener('dragstart', e => e.preventDefault());
+    tabs(nav).forEach(t => { t.style.cursor = 'grab'; t.title = t.title || 'Arrastrar para reordenar'; });
+  }
+
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
 })();
 </script>
 </body>
