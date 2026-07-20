@@ -6660,9 +6660,10 @@ function agRender() {
       imgEl.classList.add('visible');
     };
 
-    // IMPORTANTE: enganchar los handlers ANTES de asignar src. Si la imagen ya
-    // está en cache, el evento load dispara al asignar .src y un handler puesto
-    // después nunca corre: la imagen quedaba invisible con el panel abierto.
+    // Defensivo: handlers antes del src, y salidas explícitas para los casos
+    // en que no llega ningún evento (src vacío, o imagen ya completa). Sin
+    // esto, cualquiera de esos casos deja la clase 'fading' puesta y la
+    // imagen invisible con el panel de info abierto.
     imgEl.onload  = reveal;
     imgEl.onerror = reveal;
 
@@ -6673,8 +6674,6 @@ function agRender() {
     }
 
     imgEl.src = imgSrc;
-
-    // Red de seguridad: si ya estaba completa antes de enganchar, revelar igual.
     if (imgEl.complete) reveal();
   }, 120);
 
