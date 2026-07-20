@@ -6574,6 +6574,8 @@ function updateGallery(filteredTrades) {
     return l !== '';
   });
 
+  const frag = document.createDocumentFragment();
+
   agState.trades.forEach((trade, index) => {
     const cleanLink = trade[imgCol].trim();
 
@@ -6583,14 +6585,21 @@ function updateGallery(filteredTrades) {
     wrapper.onmouseleave = () => { wrapper.style.borderColor='rgba(0,212,255,.12)'; wrapper.style.transform=''; };
 
     const img = document.createElement('img');
+    // lazy + async: el navegador solo descarga/decodifica las miniaturas que
+    // entran en viewport, en vez de disparar N requests de golpe.
+    img.loading = 'lazy';
+    img.decoding = 'async';
     img.src = cleanLink;
     img.style.cssText = 'width:100%;display:block;';
     img.onerror = () => { wrapper.style.display='none'; };
 
     wrapper.addEventListener('click', () => agOpen(index));
     wrapper.appendChild(img);
-    gallery.appendChild(wrapper);
+    frag.appendChild(wrapper);
   });
+
+  // Un solo reflow en lugar de uno por tarjeta.
+  gallery.appendChild(frag);
 }
 
 function agOpen(index) {
@@ -6613,11 +6622,6 @@ function agRender() {
   const counter = document.getElementById('ag-counter');
   const imgSrc  = (trade[imgCol] || '').trim();
 
-  console.log('[Gallery] Imagen actual índice:', index);
-  console.log('[Gallery] Fila datos:', trade);
-  const _obsColDbg = resolveCol('Observación');
-  console.log('[Gallery] Observaciones:', trade[_obsColDbg] || trade['Observación'] || trade['Observacion'] || trade['Obs'] || '(vacío)');
-
   // Fade out → swap src → show only after fully loaded
   imgEl.classList.remove('visible');
   imgEl.classList.add('fading');
@@ -6631,9 +6635,6 @@ function agRender() {
     imgEl.onload = () => {
       const nw = imgEl.naturalWidth;
       const nh = imgEl.naturalHeight;
-      console.log('[Gallery] SRC actual:', imgEl.src);
-      console.log('[Gallery] Natural size:', nw, 'x', nh);
-      console.log('[Gallery] Rendered size:', imgEl.clientWidth, 'x', imgEl.clientHeight);
 
       // Cap: never render beyond original resolution (prevents upscaling blur)
       if (imgEl.clientWidth > nw || imgEl.clientHeight > nh) {
@@ -10141,12 +10142,20 @@ function ppParseDate(str){
 }
 
 /* Devuelve trades normalizados con Date válida. */
+/* Cache por identidad de referencia: ppState.trades solo se reasigna entera
+   (nunca se muta in-place), así que si la referencia no cambió el resultado
+   tampoco. Evita re-parsear fechas y clonar todo el dataset en cada render. */
+let _ppValidCacheSrc = null, _ppValidCacheOut = null;
 function ppValidTrades(){
-  return ppState.trades.map(t => {
+  if(_ppValidCacheSrc === ppState.trades) return _ppValidCacheOut;
+  const out = ppState.trades.map(t => {
     const d = ppParseDate(t.fecha);
     const r = ppNum(t.resultado);
     return { ...t, _d:d, _r:r };
   }).filter(t => t._d && isFinite(t._r));
+  _ppValidCacheSrc = ppState.trades;
+  _ppValidCacheOut = out;
+  return out;
 }
 
 function ppMonthTrades(all){
@@ -12460,10 +12469,17 @@ function ppTradeEsDe(trade, cuenta){
 }
 
 /** Trades de la cuenta activa. Sin cuenta activa, entran todos. */
+/* Mismo criterio de cache: depende solo de (lista, cuenta activa). */
+let _ppCtaCacheSrc = null, _ppCtaCacheKey = null, _ppCtaCacheOut = null;
 function ppTradesDeCuenta(lista){
   const activa = ppCuentaActiva();
   if(!activa) return lista;
-  return lista.filter(t => ppTradeEsDe(t, activa));
+  if(_ppCtaCacheSrc === lista && _ppCtaCacheKey === activa) return _ppCtaCacheOut;
+  const out = lista.filter(t => ppTradeEsDe(t, activa));
+  _ppCtaCacheSrc = lista;
+  _ppCtaCacheKey = activa;
+  _ppCtaCacheOut = out;
+  return out;
 }
 
 /** % acumulado de una cuenta puntual. */
