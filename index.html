@@ -1036,6 +1036,25 @@ input[type="file"] { display: none; }
 #ag-img.fading { opacity:0; transition:opacity .15s ease; }
 #ag-img.visible { opacity:1; transition:opacity .15s ease; }
 
+/* Aviso cuando el link no carga como imagen (en vez de panel en blanco) */
+#ag-img-error {
+  display:none; position:absolute; inset:0;
+  flex-direction:column; align-items:center; justify-content:center; gap:8px;
+  min-width:min(60vw,420px); min-height:240px; padding:32px;
+  text-align:center; color:var(--t2);
+  border:1px dashed rgba(90,168,255,.25); border-radius:12px;
+  background:rgba(8,13,20,.6);
+}
+#ag-img-error .agie-ic { font-size:40px; opacity:.7; }
+#ag-img-error .agie-t  { font-size:14px; font-weight:800; color:var(--tx); letter-spacing:.5px; }
+#ag-img-error .agie-s  { font-size:12px; max-width:320px; line-height:1.5; }
+#ag-img-error .agie-link {
+  margin-top:6px; font-size:12px; font-weight:700; color:var(--cyan);
+  text-decoration:none; border:1px solid rgba(34,243,255,.3);
+  padding:6px 14px; border-radius:6px; transition:all .18s;
+}
+#ag-img-error .agie-link:hover { background:rgba(34,243,255,.08); }
+
 /* Nav arrows — fixed to modal sides */
 .ag-arrow {
   position:fixed; top:50%; transform:translateY(-50%);
@@ -6627,6 +6646,62 @@ function agOpen(index) {
   document.addEventListener('keydown', agKeyNav);
 }
 
+/* Devuelve variantes de URL a probar en orden. La primera suele ser el link
+   crudo; si es un formato conocido que NO carga en <img>, se antepone la
+   versión directa. Best-effort: si no reconoce el patrón, devuelve el original. */
+function agImgCandidates(raw){
+  const url = (raw || '').trim();
+  if (!url) return [];
+  const out = [];
+
+  // Google Drive: .../file/d/ID/view  |  open?id=ID  |  uc?id=ID  |  ?id=ID
+  let m = url.match(/drive\.google\.com\/file\/d\/([-\w]{10,})/)
+       || url.match(/[?&]id=([-\w]{10,})/);
+  if (m){
+    const id = m[1];
+    // El endpoint thumbnail es el que más consistentemente renderiza en <img>.
+    out.push('https://drive.google.com/thumbnail?id=' + id + '&sz=w2000');
+    out.push('https://drive.google.com/uc?export=view&id=' + id);
+    out.push('https://lh3.googleusercontent.com/d/' + id + '=w2000');
+  }
+
+  // Dropbox: forzar contenido crudo
+  if (/dropbox\.com/.test(url)){
+    out.push(url.replace(/([?&])dl=0/, '$1raw=1').replace('www.dropbox.com', 'dl.dropboxusercontent.com'));
+  }
+
+  // Siempre incluir el original como último recurso (por si ya era directo).
+  if (!out.includes(url)) out.push(url);
+  return out;
+}
+
+function agShowImgError(rawLink){
+  const wrap = document.getElementById('ag-img-wrap');
+  if (!wrap) return;
+  let box = document.getElementById('ag-img-error');
+  if (!box){
+    box = document.createElement('div');
+    box.id = 'ag-img-error';
+    wrap.appendChild(box);
+  }
+  const link = (rawLink || '').trim();
+  box.innerHTML = link
+    ? '<div class="agie-ic">🖼️</div><div class="agie-t">No se pudo cargar la imagen</div>'
+      + '<div class="agie-s">El link no es una imagen directa o no está disponible.</div>'
+      + '<a class="agie-link" href="' + _rgEsc(link) + '" target="_blank" rel="noopener">Abrir en pestaña nueva ↗</a>'
+    : '<div class="agie-ic">🖼️</div><div class="agie-t">Este trade no tiene imagen</div>';
+  box.style.display = 'flex';
+  const imgEl = document.getElementById('ag-img');
+  if (imgEl) imgEl.style.visibility = 'hidden';
+}
+
+function agHideImgError(){
+  const box = document.getElementById('ag-img-error');
+  if (box) box.style.display = 'none';
+  const imgEl = document.getElementById('ag-img');
+  if (imgEl) imgEl.style.visibility = '';
+}
+
 function agRender() {
   const { trades, index } = agState;
   if (!trades.length) return;
@@ -6646,7 +6721,9 @@ function agRender() {
     imgEl.style.maxWidth  = '';
     imgEl.style.maxHeight = '';
 
-    const reveal = () => {
+    agHideImgError();
+
+    const onOK = () => {
       const nw = imgEl.naturalWidth;
       const nh = imgEl.naturalHeight;
 
@@ -6656,25 +6733,42 @@ function agRender() {
         imgEl.style.maxHeight = 'min(80vh, ' + nh + 'px)';
       }
 
+      agHideImgError();
       imgEl.classList.remove('fading');
       imgEl.classList.add('visible');
     };
 
-    // Defensivo: handlers antes del src, y salidas explícitas para los casos
-    // en que no llega ningún evento (src vacío, o imagen ya completa). Sin
-    // esto, cualquiera de esos casos deja la clase 'fading' puesta y la
-    // imagen invisible con el panel de info abierto.
-    imgEl.onload  = reveal;
-    imgEl.onerror = reveal;
+    // ── Candidatos de URL ──────────────────────────────────────────────
+    // Muchos links pegados (Google Drive /view, Dropbox ?dl=0, etc.) NO son
+    // URL directas de imagen: un <img> no las puede cargar y disparan error.
+    // Probamos variantes normalizadas en orden; si todas fallan, mostramos
+    // un aviso visible con el link crudo en vez de un panel en blanco.
+    const candidatos = agImgCandidates(imgSrc);
+    let ci = 0;
+
+    const intentar = () => {
+      if (ci >= candidatos.length) {          // se agotaron las variantes
+        imgEl.classList.remove('fading');
+        imgEl.classList.add('visible');
+        agShowImgError(imgSrc);
+        return;
+      }
+      imgEl.src = candidatos[ci++];
+      if (imgEl.complete && imgEl.naturalWidth) onOK();
+    };
+
+    imgEl.onload  = onOK;
+    imgEl.onerror = intentar;                 // siguiente candidato
 
     if (!imgSrc) {           // sin link no hay evento que esperar
       imgEl.removeAttribute('src');
-      reveal();
+      imgEl.classList.remove('fading');
+      imgEl.classList.add('visible');
+      agShowImgError('');
       return;
     }
 
-    imgEl.src = imgSrc;
-    if (imgEl.complete) reveal();
+    intentar();
   }, 120);
 
   // Counter
