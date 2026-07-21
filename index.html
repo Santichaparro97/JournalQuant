@@ -4483,7 +4483,7 @@ html, body { background: transparent !important; }
 <div id="img-modal" onclick="closeImgModal(event)">
   <div id="img-inner">
     <button id="img-close" onclick="closeImgModal()">✕ Cerrar</button>
-    <img id="img-modal-img" src="" alt="">
+    <img id="img-modal-img" src="" alt="" referrerpolicy="no-referrer">
     <div id="img-modal-meta"></div>
     <div class="img-nav">
       <button class="img-nav-btn" onclick="navModal(-1)">← Anterior</button>
@@ -6689,6 +6689,9 @@ function updateGallery(filteredTrades) {
     // entran en viewport, en vez de disparar N requests de golpe.
     img.loading = 'lazy';
     img.decoding = 'async';
+    // no-referrer: muchos hosts bloquean la imagen embebida si detectan el
+    // Referer del dominio (protección hotlink). Sin Referer la sirven igual.
+    img.referrerPolicy = 'no-referrer';
     img.src = cleanLink;
     img.style.cssText = 'width:100%;display:block;';
     img.onerror = () => { wrapper.style.display='none'; };
@@ -6720,9 +6723,16 @@ function agOpen(index) {
 function agImgCandidates(raw){
   const url = (raw || '').trim();
   if (!url) return [];
-  const out = [url];                    // ← crudo primero, siempre
 
+  const out = [];
   const add = u => { if (u && !out.includes(u)) out.push(u); };
+
+  // Contenido mixto: un <img> en página https NO puede cargar un src http://
+  // (el navegador lo bloquea), pero el mismo link abre bien en pestaña sola.
+  // Probamos primero la versión https; el http original queda como respaldo.
+  if (/^http:\/\//i.test(url)) add(url.replace(/^http:\/\//i, 'https://'));
+
+  add(url);                             // ← crudo (https ya va antes si aplica)
 
   // Google Drive: .../file/d/ID/view  |  open?id=ID  |  uc?id=ID  |  ?id=ID
   let m = url.match(/drive\.google\.com\/file\/d\/([-\w]{10,})/)
@@ -8066,7 +8076,7 @@ function adaptCSVToSchema(){
 
   <div id="ag-img-wrap">
     <button class="ag-arrow" id="ag-prev" onclick="agNav(-1)" title="Anterior">‹</button>
-    <img id="ag-img" src="" alt="">
+    <img id="ag-img" src="" alt="" referrerpolicy="no-referrer">
     <button class="ag-arrow" id="ag-next" onclick="agNav(+1)" title="Siguiente">›</button>
   </div>
 
