@@ -3357,6 +3357,22 @@ html, body { background: transparent !important; }
   border-color: var(--cyan);
   box-shadow: 0 0 14px rgba(34,243,255,.35);
 }
+/* ＋ TRADE — acción destacada, pegada al grupo pero no es una vista */
+.mnt-add {
+  margin-left: 4px;
+  background: linear-gradient(135deg, #16a34a, #22c55e);
+  border: 1px solid rgba(34,197,94,.5);
+  color: #fff;
+  font-family: var(--mono); font-size: 10px; font-weight: 900;
+  letter-spacing: 1.5px; text-transform: uppercase;
+  padding: 5px 14px; border-radius: 6px;
+  cursor: pointer;
+  transition: all .18s;
+  white-space: nowrap;
+  box-shadow: 0 0 14px rgba(34,197,94,.3);
+}
+.mnt-add:hover { box-shadow: 0 0 20px rgba(34,197,94,.55); transform: translateY(-1px); }
+.mnt-add:active { transform: translateY(0); }
 
 /* ── CALIBRACIÓN POR-IMAGEN: aviso de global disponible ── */
 #proj-measure-panel .pm-global-offer {
@@ -3696,6 +3712,7 @@ html, body { background: transparent !important; }
     <button class="mnt-tab"        data-view="registro"  onclick="navSetView('registro')">📋 REGISTRO</button>
     <button class="mnt-tab"        data-view="dashboard" onclick="navSetView('dashboard')">📊 MÉTRICAS</button>
     <button class="mnt-tab"        data-view="quant"     onclick="navSetView('quant')">🧬 QUANT LAB</button>
+    <button class="mnt-add" id="add-trade-btn" type="button" onclick="atOpen()" title="Agregar un trade nuevo">＋ TRADE</button>
   </div>
 
   <div class="h-right">
@@ -13862,6 +13879,9 @@ async function sbBootData(){
     const byView = new Map(tabs(nav).map(t => [t.dataset.view, t]));
     // Solo reubica las que existan; las nuevas quedan al final intactas.
     saved.forEach(v => { const t = byView.get(v); if(t) nav.appendChild(t); });
+    // El botón ＋ TRADE (no es una pestaña) siempre queda al final del grupo.
+    const addBtn = nav.querySelector('#add-trade-btn');
+    if(addBtn) nav.appendChild(addBtn);
   }
 
   function save(){
@@ -13961,6 +13981,331 @@ async function sbBootData(){
 
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
   else init();
+})();
+</script>
+
+<!-- ═════════════════════════════════════════════════════════════
+     AGREGAR TRADE — asistente de 3 pasos (bloque autocontenido)
+     1) cuenta  2) plantilla  3) columnas de esa plantilla.
+     Inserta en jq_trades (data + hoja + orden), igual que el Registro.
+     Para revertir: borrar este <style> + <script> + el botón #add-trade-btn.
+     ═════════════════════════════════════════════════════════════ -->
+<style id="at-styles">
+#at-modal{
+  position:fixed; inset:0; z-index:600; display:none;
+  align-items:center; justify-content:center; padding:24px;
+  background:rgba(0,0,0,.72);
+  -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);
+}
+#at-modal.open{ display:flex; }
+#at-inner{
+  width:100%; max-width:620px; max-height:88vh; overflow:hidden;
+  display:flex; flex-direction:column;
+  background:linear-gradient(135deg, rgba(12,20,36,.97), rgba(8,12,22,.94));
+  border:1px solid rgba(34,197,94,.28); border-radius:14px;
+  box-shadow:0 28px 80px rgba(0,0,0,.7), 0 0 40px rgba(34,197,94,.08);
+}
+#at-head{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:16px 20px 12px; border-bottom:1px solid rgba(90,168,255,.10);
+}
+#at-title{
+  font-family:var(--sans); font-size:14px; font-weight:900; letter-spacing:1.5px;
+  text-transform:uppercase;
+  background:linear-gradient(90deg, #22c55e, var(--cyan));
+  -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; color:transparent;
+}
+#at-close{
+  background:transparent; border:1px solid rgba(120,180,255,.22);
+  color:rgba(120,180,255,.6); font-size:12px; font-weight:700;
+  padding:3px 10px; border-radius:6px; cursor:pointer; transition:all .15s;
+}
+#at-close:hover{ border-color:var(--red2); color:var(--red2); }
+#at-steps{ display:flex; gap:6px; padding:12px 20px 0; }
+.at-stepdot{
+  flex:1; height:4px; border-radius:2px; background:rgba(120,180,255,.15);
+  transition:background .2s;
+}
+.at-stepdot.on{ background:linear-gradient(90deg,#22c55e,var(--cyan)); }
+#at-crumb{
+  padding:8px 20px 0; font-size:10px; font-family:var(--mono);
+  color:var(--t2); letter-spacing:.5px; min-height:14px;
+}
+#at-crumb b{ color:var(--cyan); }
+#at-body{ padding:14px 20px; overflow-y:auto; flex:1; }
+.at-steptitle{ font-size:11px; font-weight:800; color:var(--tx); letter-spacing:1px; text-transform:uppercase; margin-bottom:4px; }
+.at-stepsub{ font-size:11px; color:var(--t2); margin-bottom:14px; line-height:1.5; }
+.at-chips{ display:flex; flex-wrap:wrap; gap:8px; }
+.at-chip{
+  background:rgba(16,26,46,.6); border:1px solid rgba(90,168,255,.18);
+  color:var(--tx); font-size:12px; font-weight:700;
+  padding:10px 16px; border-radius:8px; cursor:pointer; transition:all .15s;
+}
+.at-chip:hover{ border-color:var(--cyan); background:rgba(34,243,255,.06); transform:translateY(-1px); }
+.at-chip .at-chip-sub{ display:block; font-size:9px; color:var(--t3); font-family:var(--mono); margin-top:2px; font-weight:600; }
+.at-empty{ font-size:12px; color:var(--t2); padding:16px; text-align:center; border:1px dashed rgba(90,168,255,.2); border-radius:10px; }
+.at-empty a{ color:var(--cyan); cursor:pointer; text-decoration:underline; }
+.at-field{ margin-bottom:12px; }
+.at-field label{ display:block; font-size:10px; font-weight:800; color:var(--t2); letter-spacing:.5px; text-transform:uppercase; margin-bottom:4px; }
+.at-field input{
+  width:100%; box-sizing:border-box;
+  background:rgba(8,12,22,.7); border:1px solid rgba(90,168,255,.18);
+  color:var(--tx); font-family:var(--mono); font-size:13px;
+  padding:9px 12px; border-radius:7px; outline:none; transition:all .15s;
+}
+.at-field input:focus{ border-color:var(--cyan); box-shadow:0 0 0 2px rgba(34,243,255,.16); }
+#at-foot{
+  display:flex; gap:10px; justify-content:space-between; align-items:center;
+  padding:12px 20px 16px; border-top:1px solid rgba(90,168,255,.10);
+}
+.at-btn{
+  padding:9px 18px; border-radius:8px; font-family:var(--sans);
+  font-size:11px; font-weight:800; letter-spacing:1px; cursor:pointer; transition:all .2s;
+}
+.at-btn-ghost{ background:transparent; border:1px solid rgba(120,180,255,.25); color:var(--t2); }
+.at-btn-ghost:hover{ border-color:var(--cyan); color:var(--tx); }
+.at-btn-primary{ background:linear-gradient(135deg,#16a34a,#22c55e); border:1px solid rgba(34,197,94,.5); color:#fff; box-shadow:0 4px 18px rgba(34,197,94,.25); }
+.at-btn-primary:hover{ box-shadow:0 8px 26px rgba(34,197,94,.4); transform:translateY(-1px); }
+.at-btn:disabled{ opacity:.5; cursor:default; transform:none; box-shadow:none; }
+</style>
+
+<div id="at-modal" onclick="if(event.target===this)atClose()">
+  <div id="at-inner">
+    <div id="at-head">
+      <div id="at-title">＋ Agregar trade</div>
+      <button id="at-close" type="button" onclick="atClose()">✕ Cerrar</button>
+    </div>
+    <div id="at-steps">
+      <div class="at-stepdot" data-s="1"></div>
+      <div class="at-stepdot" data-s="2"></div>
+      <div class="at-stepdot" data-s="3"></div>
+    </div>
+    <div id="at-crumb"></div>
+    <div id="at-body"></div>
+    <div id="at-foot">
+      <button class="at-btn at-btn-ghost" id="at-back" type="button" onclick="atBack()">‹ Atrás</button>
+      <button class="at-btn at-btn-primary" id="at-save" type="button" onclick="atSave()" style="display:none;">Guardar trade</button>
+    </div>
+  </div>
+</div>
+
+<script id="at-logic">
+(function(){
+  const atState = { step:1, cuenta:null, plantilla:null, plantillas:[], multiSheet:false, valuesByCol:{} };
+  const $ = id => document.getElementById(id);
+  const esc = s => (typeof _rgEsc === 'function' ? _rgEsc(s) : String(s==null?'':s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])));
+  const norm = s => (typeof _rgNorm === 'function' ? _rgNorm(s) : String(s||'').toLowerCase().trim());
+
+  function esColumnaCuenta(col){ return norm(col && col.name) === 'cuenta'; }
+  function esColumnaFecha(col){
+    const t = norm(col && col.type);
+    if(t.includes('date') || t.includes('fecha')) return true;
+    const n = norm(col && col.name);
+    return /fecha|date/.test(n) || n === 'dia';
+  }
+
+  // ── abrir ──
+  window.atOpen = async function(){
+    if(typeof sbIsLogged === 'function' && !sbIsLogged()){
+      if(typeof sbGateShow === 'function') sbGateShow();
+      return;
+    }
+    atState.step = 1; atState.cuenta = null; atState.plantilla = null; atState.valuesByCol = {};
+    $('at-modal').classList.add('open');
+    document.addEventListener('keydown', atEsc);
+    render();  // muestra "cargando" y luego refresca
+    try{
+      if(typeof ppCargarCuentas === 'function' && (!ppState.cuentas || !ppState.cuentas.length)) await ppCargarCuentas();
+    }catch(_){}
+    await cargarPlantillas();
+    render();
+  };
+  window.atClose = function(){
+    $('at-modal').classList.remove('open');
+    document.removeEventListener('keydown', atEsc);
+  };
+  function atEsc(e){ if(e.key === 'Escape') atClose(); }
+
+  window.atBack = function(){
+    if(atState.step > 1){ atState.step--; render(); }
+    else atClose();
+  };
+
+  async function cargarPlantillas(){
+    try{
+      const rows = await sbSelect('jq_sheets', 'select=name,columns&order=created_at.asc');
+      if(rows && rows.length){
+        atState.multiSheet = true;
+        atState.plantillas = rows.map(r => ({ name:r.name, columns:(r.columns||[]).slice().sort((a,b)=>(a.order||0)-(b.order||0)) }));
+        return;
+      }
+    }catch(_){ /* tabla jq_sheets no existe */ }
+    // Fallback: una sola plantilla implícita, columnas del esquema/datos cargados.
+    atState.multiSheet = false;
+    let cols = [];
+    try{
+      const sr = await sbSelect('jq_schema', 'select=columns&id=eq.1');
+      if(sr && sr[0] && sr[0].columns) cols = sr[0].columns.slice().sort((a,b)=>(a.order||0)-(b.order||0));
+    }catch(_){}
+    if(!cols.length && typeof csvData !== 'undefined' && csvData[0]){
+      cols = Object.keys(csvData[0]).map((name,i)=>({ name, order:i }));
+    }
+    atState.plantillas = [{ name:'Trades', columns:cols }];
+  }
+
+  async function cargarValores(plantilla){
+    const q = 'select=data' + (atState.multiSheet ? '&hoja=eq.'+encodeURIComponent(plantilla.name) : '');
+    let rows = [];
+    try{ rows = await sbSelect('jq_trades', q) || []; }catch(_){}
+    const map = {};
+    rows.forEach(r => {
+      const d = r.data || {};
+      Object.keys(d).forEach(k => {
+        const v = (d[k]==null?'':String(d[k])).trim();
+        if(!v) return;
+        (map[k] = map[k] || new Set()).add(v);
+      });
+    });
+    const out = {};
+    Object.keys(map).forEach(k => out[k] = [...map[k]].slice(0, 60));
+    atState.valuesByCol = out;
+  }
+
+  // ── render por paso ──
+  function render(){
+    for(const d of document.querySelectorAll('#at-steps .at-stepdot'))
+      d.classList.toggle('on', Number(d.dataset.s) <= atState.step);
+    $('at-back').textContent = atState.step > 1 ? '‹ Atrás' : '✕ Cancelar';
+    $('at-save').style.display = atState.step === 3 ? '' : 'none';
+
+    const crumb = [];
+    if(atState.cuenta) crumb.push('Cuenta: <b>'+esc(atState.cuenta)+'</b>');
+    if(atState.plantilla) crumb.push('Plantilla: <b>'+esc(atState.plantilla.name)+'</b>');
+    $('at-crumb').innerHTML = crumb.join('  ·  ');
+
+    if(atState.step === 1) return renderPaso1();
+    if(atState.step === 2) return renderPaso2();
+    return renderPaso3();
+  }
+
+  function renderPaso1(){
+    const cuentas = (ppState && ppState.cuentas) ? ppState.cuentas : [];
+    let html = '<div class="at-steptitle">1 · ¿A qué cuenta?</div>' +
+               '<div class="at-stepsub">Elegí en cuál de tus cuentas se registra este trade.</div>';
+    if(!cuentas.length){
+      html += '<div class="at-empty">No tenés cuentas creadas todavía.<br>' +
+              '<a onclick="atClose();if(typeof ppOpenCuentas===\'function\')ppOpenCuentas();">Crear una cuenta ahora</a>' +
+              '<br><br>o registralo como:</div>' +
+              '<div class="at-chips" style="margin-top:10px;"><div class="at-chip" onclick="atPickCuenta(\'Global\')">🌐 Global<span class="at-chip-sub">impacta todas</span></div></div>';
+    } else {
+      html += '<div class="at-chips">' +
+        cuentas.map(c => '<div class="at-chip" onclick="atPickCuenta('+JSON.stringify(c.nombre).replace(/"/g,'&quot;')+')">'+esc(c.nombre)+
+          (c.saldo!=null && c.saldo!=='' ? '<span class="at-chip-sub">saldo '+esc(c.saldo)+'</span>' : '')+'</div>').join('') +
+        '<div class="at-chip" onclick="atPickCuenta(\'Global\')">🌐 Global<span class="at-chip-sub">impacta todas</span></div>' +
+        '</div>';
+    }
+    $('at-body').innerHTML = html;
+  }
+  window.atPickCuenta = function(nombre){ atState.cuenta = nombre; atState.step = 2; render(); };
+
+  function renderPaso2(){
+    const ps = atState.plantillas || [];
+    let html = '<div class="at-steptitle">2 · ¿A qué plantilla?</div>' +
+               '<div class="at-stepsub">El trade se agrega a esta plantilla del Registro y usa sus columnas.</div>';
+    if(!ps.length){
+      html += '<div class="at-empty">No se encontraron plantillas.</div>';
+    } else {
+      html += '<div class="at-chips">' +
+        ps.map((p,i) => '<div class="at-chip" onclick="atPickPlantilla('+i+')">'+esc(p.name)+
+          '<span class="at-chip-sub">'+(p.columns.length)+' columnas</span></div>').join('') +
+        '</div>';
+    }
+    $('at-body').innerHTML = html;
+  }
+  window.atPickPlantilla = async function(i){
+    atState.plantilla = atState.plantillas[i];
+    atState.step = 3;
+    $('at-body').innerHTML = '<div class="at-stepsub">Cargando columnas…</div>';
+    render();
+    await cargarValores(atState.plantilla);
+    if(atState.step === 3) renderPaso3();
+  };
+
+  function renderPaso3(){
+    const p = atState.plantilla;
+    const cols = (p.columns || []).filter(c => c && c.name && !esColumnaCuenta(c));
+    let html = '<div class="at-steptitle">3 · Completá el trade</div>' +
+               '<div class="at-stepsub">Cargá los datos de las columnas de «'+esc(p.name)+'». Se guarda en la cuenta <b>'+esc(atState.cuenta)+'</b>.</div>';
+    if(!cols.length){
+      html += '<div class="at-empty">Esta plantilla no tiene columnas para completar.</div>';
+    }
+    cols.forEach((c,i) => {
+      const dlId = 'at-dl-'+i;
+      const vals = atState.valuesByCol[c.name] || [];
+      let input;
+      if(esColumnaFecha(c)){
+        input = '<input type="date" data-col="'+esc(c.name)+'">';
+      } else if(vals.length){
+        input = '<input type="text" list="'+dlId+'" data-col="'+esc(c.name)+'" autocomplete="off" placeholder="Elegí o escribí…">' +
+                '<datalist id="'+dlId+'">'+vals.map(v=>'<option value="'+esc(v)+'">').join('')+'</datalist>';
+      } else {
+        input = '<input type="text" data-col="'+esc(c.name)+'" placeholder="…">';
+      }
+      html += '<div class="at-field"><label>'+esc(c.name)+'</label>'+input+'</div>';
+    });
+    $('at-body').innerHTML = html;
+  }
+
+  // ── guardar ──
+  window.atSave = async function(){
+    const btn = $('at-save');
+    btn.disabled = true; btn.textContent = 'Guardando…';
+    try{
+      const p = atState.plantilla;
+      const data = {};
+      // Todas las columnas de la plantilla (para respetar su estructura).
+      (p.columns || []).forEach(c => { if(c && c.name) data[c.name] = ''; });
+      // Valores cargados.
+      document.querySelectorAll('#at-body [data-col]').forEach(inp => {
+        data[inp.dataset.col] = (inp.value || '').trim();
+      });
+      // La cuenta elegida: siempre en el campo 'cuenta' (lo lee el calendario).
+      const colCuenta = (p.columns || []).find(esColumnaCuenta);
+      data[colCuenta ? colCuenta.name : 'cuenta'] = atState.cuenta;
+
+      // orden = último + 1 (o timestamp si no se puede consultar).
+      let orden = Date.now();
+      try{
+        const q = 'select=orden&order=orden.desc&limit=1' + (atState.multiSheet ? '&hoja=eq.'+encodeURIComponent(p.name) : '');
+        const rows = await sbSelect('jq_trades', q);
+        if(rows && rows[0] && rows[0].orden != null) orden = Number(rows[0].orden) + 1;
+      }catch(_){}
+
+      const fila = { data, orden };
+      if(atState.multiSheet) fila.hoja = p.name;
+      await sbApi('jq_trades', { method:'POST', body:[fila], headers:{ 'Prefer':'return=minimal' } });
+
+      atClose();
+      // Refrescar todo lo que muestra trades.
+      try{ if(typeof sbLoadTrades === 'function') await sbLoadTrades(); }catch(_){}
+      try{ if(typeof ppLoad === 'function') await ppLoad(); }catch(_){}
+      try{ if(typeof ppRender === 'function') ppRender(); }catch(_){}
+      try{
+        const rv = document.getElementById('registro-view');
+        if(rv && getComputedStyle(rv).display !== 'none' && typeof rgLoadGrid === 'function'){
+          await rgLoadGrid(typeof rgState!=='undefined' ? rgState.sheet : undefined);
+          if(typeof rgRender === 'function') rgRender();
+        }
+      }catch(_){}
+      if(typeof ppToast === 'function') ppToast('Trade agregado a '+atState.cuenta+' · '+p.name);
+      else if(typeof rgToast === 'function') rgToast('Trade agregado.', 'ok');
+    }catch(err){
+      console.error('[AgregarTrade]', err);
+      alert('No se pudo guardar el trade: ' + (err && err.message ? err.message : err));
+    }finally{
+      btn.disabled = false; btn.textContent = 'Guardar trade';
+    }
+  };
 })();
 </script>
 </body>
