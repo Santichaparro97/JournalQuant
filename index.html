@@ -4404,6 +4404,65 @@ html, body { background: transparent !important; }
 
 
 
+<!-- MAPPING MODAL — elegir columnas del checklist (reconstruido: el markup
+     se había perdido y dejaba el botón «➕ AGREGAR» sin efecto). El CSS y la
+     lógica (openMappingModal / mappingSaveAndApply / mappingAutoFill) ya
+     existían; esto solo restaura el HTML que respeta ese contrato. -->
+<div id="map-modal" onclick="if(event.target===this)closeMappingModal()">
+  <div id="map-inner">
+    <button id="map-close" onclick="closeMappingModal()">✕ Cerrar</button>
+    <div id="map-title">Columnas del checklist</div>
+    <div id="map-sub">
+      Elegí qué columnas de tus datos se usan como <b>filtros</b> en el checklist,
+      y qué columna cumple cada <b>rol</b> (resultado, RR, fecha, imagen, observación).
+      Se guarda para esta estructura de datos y se aplica al instante.
+    </div>
+
+    <div class="map-section">
+      <div class="map-section-title">Roles</div>
+      <div class="map-section-sub">Qué columna representa cada dato clave. Dejá «— Ninguna —» si no aplica.</div>
+      <div class="map-grid">
+        <div class="map-row">
+          <label>Resultado <span class="map-req">*</span></label>
+          <select id="map-result"></select>
+          <span class="map-hint">Win / Loss o P&amp;L</span>
+        </div>
+        <div class="map-row">
+          <label>RR</label>
+          <select id="map-rr"></select>
+          <span class="map-hint">Riesgo/beneficio</span>
+        </div>
+        <div class="map-row">
+          <label>Fecha</label>
+          <select id="map-date"></select>
+          <span class="map-hint">Fecha del trade</span>
+        </div>
+        <div class="map-row">
+          <label>Imagen</label>
+          <select id="map-image"></select>
+          <span class="map-hint">Link a la captura</span>
+        </div>
+        <div class="map-row">
+          <label>Observación</label>
+          <select id="map-obs"></select>
+          <span class="map-hint">Notas del trade</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="map-section">
+      <div class="map-section-title">Filtros del checklist</div>
+      <div class="map-section-sub">Marcá las columnas que querés poder filtrar rápido. Aparecen en el panel CHECKLIST.</div>
+      <div id="map-filters-list"></div>
+    </div>
+
+    <div class="map-actions">
+      <button id="map-auto" onclick="mappingAutoFill()" title="Detectar roles y filtros automáticamente">✨ Auto-detectar</button>
+      <button id="map-save" onclick="mappingSaveAndApply()" title="Guardar y aplicar">Guardar y aplicar</button>
+    </div>
+  </div>
+</div>
+
 <!-- OBS MODAL -->
 <div id="obs-modal" onclick="closeObsModal(event)">
   <div id="obs-inner">
@@ -6646,32 +6705,34 @@ function agOpen(index) {
   document.addEventListener('keydown', agKeyNav);
 }
 
-/* Devuelve variantes de URL a probar en orden. La primera suele ser el link
-   crudo; si es un formato conocido que NO carga en <img>, se antepone la
-   versión directa. Best-effort: si no reconoce el patrón, devuelve el original. */
+/* Devuelve variantes de URL a probar EN ORDEN.
+   Regla clave: el link CRUDO va PRIMERO. Si ya carga como imagen (como pasa
+   en la miniatura de la galería), el visor lo muestra idéntico y no hay
+   regresión posible. Las variantes normalizadas son solo un respaldo para
+   los formatos que NO cargan directo (Drive /view, Dropbox ?dl=0, etc.). */
 function agImgCandidates(raw){
   const url = (raw || '').trim();
   if (!url) return [];
-  const out = [];
+  const out = [url];                    // ← crudo primero, siempre
+
+  const add = u => { if (u && !out.includes(u)) out.push(u); };
 
   // Google Drive: .../file/d/ID/view  |  open?id=ID  |  uc?id=ID  |  ?id=ID
   let m = url.match(/drive\.google\.com\/file\/d\/([-\w]{10,})/)
-       || url.match(/[?&]id=([-\w]{10,})/);
+       || (/drive\.google\.com|googleusercontent\.com/.test(url) && url.match(/[?&]id=([-\w]{10,})/));
   if (m){
     const id = m[1];
-    // El endpoint thumbnail es el que más consistentemente renderiza en <img>.
-    out.push('https://drive.google.com/thumbnail?id=' + id + '&sz=w2000');
-    out.push('https://drive.google.com/uc?export=view&id=' + id);
-    out.push('https://lh3.googleusercontent.com/d/' + id + '=w2000');
+    // lh3 y thumbnail son los que más consistentemente renderizan en <img>.
+    add('https://lh3.googleusercontent.com/d/' + id + '=w2000');
+    add('https://drive.google.com/thumbnail?id=' + id + '&sz=w2000');
+    add('https://drive.google.com/uc?export=view&id=' + id);
   }
 
   // Dropbox: forzar contenido crudo
   if (/dropbox\.com/.test(url)){
-    out.push(url.replace(/([?&])dl=0/, '$1raw=1').replace('www.dropbox.com', 'dl.dropboxusercontent.com'));
+    add(url.replace(/([?&])dl=0/, '$1raw=1').replace('www.dropbox.com', 'dl.dropboxusercontent.com'));
   }
 
-  // Siempre incluir el original como último recurso (por si ya era directo).
-  if (!out.includes(url)) out.push(url);
   return out;
 }
 
