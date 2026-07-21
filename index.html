@@ -3278,6 +3278,13 @@ html, body { background: transparent !important; }
 .map-fchip span { font-size: 10px; font-weight: 600; color: var(--tx); flex: 1; }
 .map-fchip.active { background: rgba(34,243,255,.12); box-shadow: inset 0 0 0 1px rgba(34,243,255,.35); }
 .map-fchip-card { font-size: 8px; color: rgba(120,180,255,.5); font-family: var(--mono); }
+.map-fgroup-sep {
+  grid-column: 1 / -1;
+  font-size: 8px; font-weight: 900; letter-spacing: 2px; text-transform: uppercase;
+  color: rgba(139,108,255,.7);
+  padding: 8px 4px 2px; margin-top: 4px;
+  border-top: 1px solid rgba(139,108,255,.15);
+}
 .map-actions {
   display: flex; gap: 10px; justify-content: flex-end;
   margin-top: 16px; padding-top: 14px;
@@ -7758,25 +7765,73 @@ function openMappingModal(){
   const fl = document.getElementById('map-filters-list');
   fl.innerHTML = '';
   const roleCols = new Set([userSchema.result, userSchema.rr, userSchema.date, userSchema.image, userSchema.obs].filter(Boolean));
+  const shown = new Set();          // columnas ya listadas (evita duplicar)
   headers.forEach(col => {
     if(roleCols.has(col)) return;
     const vals = dynGetVals(col);
-    const checked = (userSchema.filters || []).includes(col);
-    const chip = document.createElement('label');
-    chip.className = 'map-fchip' + (checked ? ' active' : '');
-    chip.innerHTML = `
-      <input type="checkbox" ${checked?'checked':''} data-col="${col.replace(/"/g,'&quot;')}">
-      <span>${col}</span>
-      <span class="map-fchip-card">${vals.length} valores</span>
-    `;
-    const cb = chip.querySelector('input');
-    cb.addEventListener('change', function(){
-      chip.classList.toggle('active', this.checked);
-    });
-    fl.appendChild(chip);
+    fl.appendChild(_mapMakeChip(col, vals.length + ' valores'));
+    shown.add(col);
   });
 
   m.classList.add('open');
+
+  // Columnas de las plantillas del Registro (jq_sheets): se agregan como
+  // opciones extra aunque no estén en los datos cargados ahora mismo. Async:
+  // si la carga tarda, el modal ya está abierto con las columnas actuales.
+  _mapAppendPlantillaCols(shown, roleCols);
+}
+
+/* Crea un chip de columna para #map-filters-list. `meta` es el texto chico
+   (ej. "12 valores" o el nombre de la plantilla de origen). */
+function _mapMakeChip(col, meta){
+  const checked = (userSchema.filters || []).includes(col);
+  const chip = document.createElement('label');
+  chip.className = 'map-fchip' + (checked ? ' active' : '');
+  chip.innerHTML =
+    '<input type="checkbox" ' + (checked ? 'checked' : '') +
+      ' data-col="' + col.replace(/"/g, '&quot;') + '">' +
+    '<span>' + col + '</span>' +
+    '<span class="map-fchip-card">' + (meta || '') + '</span>';
+  chip.querySelector('input').addEventListener('change', function(){
+    chip.classList.toggle('active', this.checked);
+  });
+  return chip;
+}
+
+/* Trae columnas definidas en las plantillas del Registro y las agrega como
+   chips seleccionables, sin duplicar las ya mostradas ni las de rol. */
+async function _mapAppendPlantillaCols(shown, roleCols){
+  let rows;
+  try { rows = await sbSelect('jq_sheets', 'select=name,columns&order=created_at.asc'); }
+  catch(_){ return; }                              // tabla nueva aún no creada
+  if(!rows || !rows.length) return;
+
+  const fl = document.getElementById('map-filters-list');
+  const m  = document.getElementById('map-modal');
+  if(!fl || !m || !m.classList.contains('open')) return;   // se cerró mientras cargaba
+
+  // col -> plantillas donde aparece
+  const extra = new Map();
+  rows.forEach(r => {
+    (r.columns || []).forEach(c => {
+      const name = (c && c.name || '').trim();
+      if(!name || shown.has(name) || roleCols.has(name)) return;
+      if(!extra.has(name)) extra.set(name, []);
+      const arr = extra.get(name);
+      if(!arr.includes(r.name)) arr.push(r.name);
+    });
+  });
+  if(!extra.size) return;
+
+  const sep = document.createElement('div');
+  sep.className = 'map-fgroup-sep';
+  sep.textContent = 'De tus plantillas del Registro';
+  fl.appendChild(sep);
+
+  extra.forEach((plantillas, col) => {
+    shown.add(col);
+    fl.appendChild(_mapMakeChip(col, plantillas.join(' · ')));
+  });
 }
 
 function closeMappingModal(){
