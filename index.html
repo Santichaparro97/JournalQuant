@@ -9805,7 +9805,9 @@ html, body { font-size: 13px; line-height: 1.45; }
 #panel-view{
   position:fixed; top:var(--hh); left:0; right:0; bottom:0;
   background:var(--bg); z-index:150;
-  display:none; flex-direction:column; overflow:hidden;
+  /* Visible desde el primer pintado: calendario es la vista de inicio, así
+     no aparece un flash de Métricas mientras el JS espera los datos. */
+  display:flex; flex-direction:column; overflow:hidden;
 }
 #pp-head{
   height:34px; flex-shrink:0; display:flex; align-items:center; justify-content:space-between;
@@ -13798,6 +13800,11 @@ async function sbBootData(){
 /* Arranque: decide entre mostrar la puerta o cargar los datos. */
 (function(){
   function start(){
+    // Render inmediato del calendario (vista de inicio) para que aparezca ya
+    // dibujado, sin esperar a que terminen las llamadas async de datos. El
+    // sbBootData() posterior lo refresca cuando llegan los trades.
+    try{ navSetView('panel'); }catch(_){}
+
     sbLoadSession();
     if(sbIsLogged()){
       sbGateHide();
