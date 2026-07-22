@@ -4013,7 +4013,7 @@ html, body { background: transparent !important; }
       <span id="rg-saving">● guardando…</span>
       <select class="rg-sel" id="rg-sheet-sel" onchange="rgSwitchSheet(this.value)" title="Elegir plantilla"></select>
       <button class="rg-btn" onclick="rgNewSheet()" title="Crear otra plantilla desde cero">+ Plantilla</button>
-      <button class="rg-add" id="rg-add-btn" onclick="rgWizStart()" title="Cargar un trade nuevo, pregunta por pregunta">+ Trade</button>
+      <button class="rg-add" id="rg-add-btn" onclick="atOpen()" title="Cargar un trade nuevo con el asistente">+ Trade</button>
       <div class="rg-more-wrap">
         <button class="rg-btn rg-more" onclick="rgToggleMore(event)" title="Más opciones">⋯</button>
         <div id="rg-more-menu" style="display:none;">
@@ -12886,24 +12886,10 @@ function ppOpenForm(){
   const modalDia = document.getElementById('pp-day-modal');
   if(modalDia) modalDia.style.display = 'none';
 
-  navSetView('registro');
-  setTimeout(() => {
-    try{
-      if(typeof rgWizStart !== 'function') return;
-      rgWizStart();
-      // La fecha del día queda contestada, esté en la posición que esté
-      // (en la planilla real la primera columna es "Cantidad", no la fecha).
-      const iFecha = rgWiz.pasos.findIndex(p => p.type === 'date');
-      if(iFecha >= 0){
-        rgWiz.resp[rgWiz.pasos[iFecha].name] = iso;
-        rgWizDerivar(iso);
-        // Arranca en la primera pregunta que todavía no está respondida
-        const iSig = rgWiz.pasos.findIndex(p => rgWiz.resp[p.name] === undefined);
-        rgWiz.i = iSig >= 0 ? iSig : 0;
-        rgWizRender();
-      }
-    }catch(err){ console.error('[Calendario] abrir carga:', err); }
-  }, 260);
+  // Unificado: el alta del calendario usa el mismo asistente ＋TRADE, con la
+  // fecha del día ya preseleccionada. Un solo flujo para toda la app.
+  if(typeof atOpen === 'function') atOpen(iso);
+  else console.error('[Calendario] asistente ＋TRADE no disponible');
 }
 
 /** Borra el trade en el Registro (que ahora es la única fuente). */
@@ -14132,6 +14118,10 @@ async function sbBootData(){
   const norm = s => (typeof _rgNorm === 'function' ? _rgNorm(s) : String(s||'').toLowerCase().trim());
 
   function esColumnaCuenta(col){ return norm(col && col.name) === 'cuenta'; }
+  // Columnas que se completan solas a partir de la fecha (Año/Mes/Semana/Día).
+  function esColumnaDerivada(col){
+    return typeof rgDerivedRole === 'function' && !!rgDerivedRole(col && col.name);
+  }
   function esColumnaFecha(col){
     const t = norm(col && col.type);
     if(t.includes('date') || t.includes('fecha')) return true;
@@ -14139,13 +14129,14 @@ async function sbBootData(){
     return /fecha|date/.test(n) || n === 'dia';
   }
 
-  // ── abrir ──
-  window.atOpen = async function(){
+  // ── abrir ── (presetDate opcional: 'YYYY-MM-DD' para prellenar la fecha)
+  window.atOpen = async function(presetDate){
     if(typeof sbIsLogged === 'function' && !sbIsLogged()){
       if(typeof sbGateShow === 'function') sbGateShow();
       return;
     }
     atState.step = 1; atState.cuenta = null; atState.plantilla = null; atState.valuesByCol = {};
+    atState.presetDate = (typeof presetDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(presetDate)) ? presetDate : null;
     $('at-modal').classList.add('open');
     document.addEventListener('keydown', atEsc);
     render();  // muestra "cargando" y luego refresca
@@ -14289,7 +14280,7 @@ async function sbBootData(){
 
   function renderPaso3(){
     const p = atState.plantilla;
-    const cols = (p.columns || []).filter(c => c && c.name && !esColumnaCuenta(c));
+    const cols = (p.columns || []).filter(c => c && c.name && !esColumnaCuenta(c) && !esColumnaDerivada(c));
     let html = '<div class="at-steptitle">3 · Completá el trade</div>' +
                '<div class="at-stepsub">Columnas de «'+esc(p.name)+'». Se guarda en la cuenta <b>'+esc(atState.cuenta)+'</b>.</div>';
     if(!cols.length){
@@ -14307,7 +14298,7 @@ async function sbBootData(){
           opts.map(o => '<label class="at-checkitem"><input type="checkbox" value="'+esc(o)+'"><span>'+esc(o)+'</span></label>').join('') +
           '</div>';
       } else if(esColumnaFecha(c)){
-        field = '<input type="date" data-col="'+esc(c.name)+'">';
+        field = '<input type="date" data-col="'+esc(c.name)+'"'+(atState.presetDate ? ' value="'+esc(atState.presetDate)+'"' : '')+'>';
       } else if(t === 'time'){
         field = '<input type="time" data-col="'+esc(c.name)+'">';
       } else if(t === 'num'){
@@ -14354,6 +14345,28 @@ async function sbBootData(){
       // La cuenta elegida: siempre en el campo 'cuenta' (lo lee el calendario).
       const colCuenta = (p.columns || []).find(esColumnaCuenta);
       data[colCuenta ? colCuenta.name : 'cuenta'] = atState.cuenta;
+
+      // Derivar las columnas de fecha (Año/Mes/Semana/Día) igual que el
+      // asistente del Registro, para que el trade sea consistente y el
+      // calendario lo refleje. Si la planilla separa fecha y año, la fecha
+      // se guarda como dd/mm (su convención); si no, queda YYYY-MM-DD.
+      const cols = p.columns || [];
+      // La columna de fecha real (no la "Día" = día de semana, que es derivada).
+      const colFecha = cols.find(c => esColumnaFecha(c) && !esColumnaDerivada(c));
+      const iso = colFecha ? (data[colFecha.name] || '').trim() : '';
+      const mf = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      if(mf && typeof rgDerivedRole === 'function'){
+        const dObj = new Date(+mf[1], +mf[2]-1, +mf[3]);
+        let tieneAnio = false;
+        cols.forEach(c => {
+          const rol = rgDerivedRole(c.name);
+          if(rol === 'year'){ data[c.name] = String(dObj.getFullYear()); tieneAnio = true; }
+          else if(rol === 'month')   data[c.name] = (typeof RG_MESES_ES !== 'undefined' ? RG_MESES_ES[dObj.getMonth()] : String(dObj.getMonth()+1));
+          else if(rol === 'weekday') data[c.name] = (typeof RG_DIAS_EN  !== 'undefined' ? RG_DIAS_EN[dObj.getDay()]    : '');
+          else if(rol === 'week')    data[c.name] = String(Math.ceil(+mf[3] / 7));
+        });
+        if(tieneAnio) data[colFecha.name] = mf[3] + '/' + mf[2];
+      }
 
       // orden = último + 1 (o timestamp si no se puede consultar).
       let orden = Date.now();
