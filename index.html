@@ -4012,8 +4012,7 @@ html, body { background: transparent !important; }
       <span class="rg-htag" id="rg-tag">—</span>
       <span id="rg-saving">● guardando…</span>
       <select class="rg-sel" id="rg-sheet-sel" onchange="rgSwitchSheet(this.value)" title="Elegir plantilla"></select>
-      <button class="rg-btn" onclick="rgNewSheet()" title="Crear otra plantilla desde cero">+ Plantilla</button>
-      <button class="rg-add" id="rg-add-btn" onclick="atOpen()" title="Cargar un trade nuevo con el asistente">+ Trade</button>
+      <button class="rg-btn rg-icon" onclick="rgNewSheet()" title="Nueva plantilla" aria-label="Nueva plantilla">＋</button>
       <div class="rg-more-wrap">
         <button class="rg-btn rg-more" onclick="rgToggleMore(event)" title="Más opciones">⋯</button>
         <div id="rg-more-menu" style="display:none;">
@@ -10858,6 +10857,9 @@ async function ppDeleteTrade(id){
   padding:8px 14px; border-radius:7px; cursor:pointer; transition:all .15s; white-space:nowrap;
 }
 .rg-btn:hover{ border-color:var(--cyan); color:var(--cyan); background:rgba(0,229,212,.07); }
+
+/* Botón de ícono (+ plantilla): cuadrado, solo el signo */
+.rg-icon{ padding:8px 12px; letter-spacing:0; font-size:15px; line-height:1; }
 
 /* Menú ⋯ */
 .rg-more-wrap{ position:relative; }
