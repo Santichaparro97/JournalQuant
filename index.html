@@ -4069,14 +4069,15 @@ html, body { background: transparent !important; }
         <div class="sb-field">
           <label>Tipo</label>
           <select id="rg-col-type" onchange="rgColTipoChange()">
-            <option value="text">Texto</option>
-            <option value="num">Número</option>
-            <option value="date">Fecha</option>
-            <option value="time">Hora</option>
-            <option value="select">Selección (con opciones)</option>
-            <option value="result">Resultado (Win / Loss / No fill)</option>
-            <option value="bool">Sí / No</option>
-            <option value="link">Link</option>
+            <option value="text">📝 Texto o número</option>
+            <option value="select">🔽 Desplegable (una opción)</option>
+            <option value="checklist">☑️ Checklist (varias opciones)</option>
+            <option value="num">— Número</option>
+            <option value="date">— Fecha</option>
+            <option value="time">— Hora</option>
+            <option value="result">— Resultado (Win / Loss / No fill)</option>
+            <option value="bool">— Sí / No</option>
+            <option value="link">— Link</option>
           </select>
         </div>
         <div class="sb-field" id="rg-col-opts-wrap" style="display:none;">
@@ -11291,9 +11292,22 @@ const rgState = {
   sheets: [], sheet: null,
   headers: [], rows: [], rowIndices: [], formulaCols: [],
   types: [], options: {},
+  colOptions: [],   // opciones PREDEFINIDAS por columna (persistidas en jq_sheets)
   loading: false, error: null, loaded: false,
   renderLimit: RG_MAX_RENDER
 };
+
+/* Construye el array de columnas para guardar en jq_sheets, preservando
+   type y las opciones predefinidas. Fuente única de verdad para no perder
+   datos al crear/borrar columnas o copiar plantillas. */
+function rgColsForSave(){
+  return rgState.headers.map((h,i) => {
+    const o = { name:h, order:i, type: rgState.types[i] };
+    const op = rgState.colOptions[i];
+    if(Array.isArray(op) && op.length) o.options = op.slice();
+    return o;
+  });
+}
 
 function rgUrl(){ return (typeof PP_CONFIG !== 'undefined' && PP_CONFIG.scriptUrl) ? PP_CONFIG.scriptUrl : ''; }
 
@@ -12209,6 +12223,7 @@ async function rgLoadGrid(name){
   const headers = cols.map(c => c.name);
   rgState.sheet       = hoja;
   rgState.headers     = headers;
+  rgState.colOptions  = cols.map(c => Array.isArray(c.options) ? c.options.slice() : []);
   rgState.ids         = (tradeRows || []).map(r => r.id);
   rgState.data        = (tradeRows || []).map(r => Object.assign({}, r.data || {}));
   rgState.orden       = (tradeRows || []).map(r => (r.orden == null ? 0 : r.orden));
@@ -12293,7 +12308,7 @@ function rgCloseAddColumn(e){
 function rgColTipoChange(){
   const t = document.getElementById('rg-col-type').value;
   const wrap = document.getElementById('rg-col-opts-wrap');
-  if(wrap) wrap.style.display = (t === 'select' || t === 'result') ? 'flex' : 'none';
+  if(wrap) wrap.style.display = (t === 'select' || t === 'checklist' || t === 'result') ? 'flex' : 'none';
 }
 
 async function rgCrearColumna(){
@@ -12311,17 +12326,20 @@ async function rgCrearColumna(){
   b.disabled = true; b.textContent = 'Agregando…';
   msg('⏳ Guardando…', 'info');
   try{
-    const cols = rgState.headers.map((h,i)=>({ name:h, order:i, type: rgState.types[i] }));
-    cols.push({ name: nombre, order: cols.length, type: tipo });
-    await rgGuardarColumnas(cols);
-
-    // Si es de selección, las opciones tipeadas quedan disponibles ya
-    const opciones = (tipo === 'select' || tipo === 'result')
+    // Opciones tipeadas: se persisten para select/checklist/result.
+    const opciones = (tipo === 'select' || tipo === 'checklist' || tipo === 'result')
       ? optsRaw.split(/[,\n]/).map(s=>s.trim()).filter(Boolean) : [];
+
+    const cols = rgColsForSave();
+    const nuevaCol = { name: nombre, order: cols.length, type: tipo };
+    if(opciones.length) nuevaCol.options = opciones.slice();
+    cols.push(nuevaCol);
+    await rgGuardarColumnas(cols);
 
     rgState.headers.push(nombre);
     rgState.types.push(tipo);
     rgState.formulaCols.push(false);
+    rgState.colOptions.push(opciones);
     rgState.options[rgState.headers.length - 1] = opciones;
     rgState.rows.forEach(r => r.push(''));
     rgState.data.forEach(d => { d[nombre] = ''; });
@@ -12385,10 +12403,10 @@ async function rgConfirmarBorrarColumna(){
   b.disabled = true; b.textContent = 'Eliminando…';
   msg('⏳ Eliminando…', 'info');
   try{
-    // 1) Sacarla de la definición de la plantilla
-    const cols = rgState.headers.map((h,i)=>({ name:h, order:i, type: rgState.types[i] }))
-                               .filter((_,i)=> i !== c)
-                               .map((col,i)=>({ ...col, order:i }));
+    // 1) Sacarla de la definición de la plantilla (preservando opciones del resto)
+    const cols = rgColsForSave()
+                   .filter((_,i)=> i !== c)
+                   .map((col,i)=>({ ...col, order:i }));
     await rgGuardarColumnas(cols);
 
     // 2) Borrar el valor en cada trade que lo tuviera (elegiste borrado definitivo)
@@ -12407,6 +12425,7 @@ async function rgConfirmarBorrarColumna(){
     rgState.headers.splice(c,1);
     rgState.types.splice(c,1);
     rgState.formulaCols.splice(c,1);
+    rgState.colOptions.splice(c,1);
     rgState.rows.forEach(r => r.splice(c,1));
     const nuevasOpts = {};
     Object.keys(rgState.options).forEach(k => {
@@ -12468,7 +12487,7 @@ async function rgCreateSheet(){
 
   let columns;
   if(copy){
-    columns = rgState.headers.map((h,i) => ({ name:h, order:i, type: rgState.types[i] }));
+    columns = rgColsForSave();
   } else {
     // Acepta separadas por coma o una por linea
     columns = raw.split(/[,\n]/).map(s => s.trim()).filter(Boolean)
@@ -14054,6 +14073,22 @@ async function sbBootData(){
   padding:9px 12px; border-radius:7px; outline:none; transition:all .15s;
 }
 .at-field input:focus{ border-color:var(--cyan); box-shadow:0 0 0 2px rgba(34,243,255,.16); }
+.at-field select{
+  width:100%; box-sizing:border-box;
+  background:rgba(8,12,22,.7); border:1px solid rgba(90,168,255,.18);
+  color:var(--tx); font-family:var(--mono); font-size:13px;
+  padding:9px 12px; border-radius:7px; outline:none; cursor:pointer;
+}
+.at-field select:focus{ border-color:var(--cyan); box-shadow:0 0 0 2px rgba(34,243,255,.16); }
+.at-field select option{ background:#0c1424; color:var(--tx); }
+.at-check{ display:flex; flex-wrap:wrap; gap:8px; }
+.at-checkitem{
+  display:flex; align-items:center; gap:6px; padding:7px 12px;
+  background:rgba(16,26,46,.6); border:1px solid rgba(90,168,255,.18);
+  border-radius:7px; cursor:pointer; font-size:12px; color:var(--tx); user-select:none;
+}
+.at-checkitem:hover{ border-color:var(--cyan); background:rgba(34,243,255,.05); }
+.at-checkitem input{ accent-color:var(--cyan); cursor:pointer; }
 #at-foot{
   display:flex; gap:10px; justify-content:space-between; align-items:center;
   padding:12px 20px 16px; border-top:1px solid rgba(90,168,255,.10);
@@ -14231,27 +14266,64 @@ async function sbBootData(){
     if(atState.step === 3) renderPaso3();
   };
 
+  // Opciones de una columna: las predefinidas (persistidas) + las ya usadas.
+  function atColOpts(c){
+    const pre = Array.isArray(c.options) ? c.options : [];
+    const seen = atState.valuesByCol[c.name] || [];
+    const out = [], has = new Set();
+    pre.concat(seen).forEach(v => {
+      const s = (v==null?'':String(v)).trim();
+      if(s && !has.has(s.toLowerCase())){ has.add(s.toLowerCase()); out.push(s); }
+    });
+    return out;
+  }
+
+  // Toggle del input "Otro…" en un desplegable.
+  window.atSelOtro = function(sel){
+    const otro = document.getElementById(sel.dataset.otro);
+    if(!otro) return;
+    const show = sel.value === '__otro__';
+    otro.style.display = show ? '' : 'none';
+    if(show){ otro.value = ''; otro.focus(); }
+  };
+
   function renderPaso3(){
     const p = atState.plantilla;
     const cols = (p.columns || []).filter(c => c && c.name && !esColumnaCuenta(c));
     let html = '<div class="at-steptitle">3 · Completá el trade</div>' +
-               '<div class="at-stepsub">Cargá los datos de las columnas de «'+esc(p.name)+'». Se guarda en la cuenta <b>'+esc(atState.cuenta)+'</b>.</div>';
+               '<div class="at-stepsub">Columnas de «'+esc(p.name)+'». Se guarda en la cuenta <b>'+esc(atState.cuenta)+'</b>.</div>';
     if(!cols.length){
       html += '<div class="at-empty">Esta plantilla no tiene columnas para completar.</div>';
     }
     cols.forEach((c,i) => {
-      const dlId = 'at-dl-'+i;
-      const vals = atState.valuesByCol[c.name] || [];
-      let input;
-      if(esColumnaFecha(c)){
-        input = '<input type="date" data-col="'+esc(c.name)+'">';
-      } else if(vals.length){
-        input = '<input type="text" list="'+dlId+'" data-col="'+esc(c.name)+'" autocomplete="off" placeholder="Elegí o escribí…">' +
-                '<datalist id="'+dlId+'">'+vals.map(v=>'<option value="'+esc(v)+'">').join('')+'</datalist>';
+      const t = norm(c.type);
+      let opts = atColOpts(c);
+      if(!opts.length && t === 'result') opts = ['Win','Loss','No fill'];
+      if(!opts.length && t === 'bool')   opts = ['Sí','No'];
+
+      let field;
+      if(t === 'checklist' && opts.length){
+        field = '<div class="at-check" data-checklist="'+esc(c.name)+'">' +
+          opts.map(o => '<label class="at-checkitem"><input type="checkbox" value="'+esc(o)+'"><span>'+esc(o)+'</span></label>').join('') +
+          '</div>';
+      } else if(esColumnaFecha(c)){
+        field = '<input type="date" data-col="'+esc(c.name)+'">';
+      } else if(t === 'time'){
+        field = '<input type="time" data-col="'+esc(c.name)+'">';
+      } else if(t === 'num'){
+        field = '<input type="number" step="any" data-col="'+esc(c.name)+'" placeholder="…">';
+      } else if(opts.length){
+        const sid = 'at-sel-'+i, oid = 'at-otro-'+i;
+        field = '<select id="'+sid+'" data-col="'+esc(c.name)+'" data-otro="'+oid+'" onchange="atSelOtro(this)">' +
+            '<option value="">— elegir —</option>' +
+            opts.map(o => '<option value="'+esc(o)+'">'+esc(o)+'</option>').join('') +
+            '<option value="__otro__">✏️ Otro…</option>' +
+          '</select>' +
+          '<input type="text" id="'+oid+'" placeholder="Escribí el valor…" style="display:none;margin-top:6px;">';
       } else {
-        input = '<input type="text" data-col="'+esc(c.name)+'" placeholder="…">';
+        field = '<input type="text" data-col="'+esc(c.name)+'" placeholder="…">';
       }
-      html += '<div class="at-field"><label>'+esc(c.name)+'</label>'+input+'</div>';
+      html += '<div class="at-field"><label>'+esc(c.name)+'</label>'+field+'</div>';
     });
     $('at-body').innerHTML = html;
   }
@@ -14265,9 +14337,19 @@ async function sbBootData(){
       const data = {};
       // Todas las columnas de la plantilla (para respetar su estructura).
       (p.columns || []).forEach(c => { if(c && c.name) data[c.name] = ''; });
-      // Valores cargados.
+      // Checklists → valores marcados separados por coma.
+      document.querySelectorAll('#at-body [data-checklist]').forEach(box => {
+        const col = box.getAttribute('data-checklist');
+        data[col] = [...box.querySelectorAll('input[type=checkbox]:checked')].map(cb => cb.value).join(', ');
+      });
+      // Inputs y desplegables.
       document.querySelectorAll('#at-body [data-col]').forEach(inp => {
-        data[inp.dataset.col] = (inp.value || '').trim();
+        let val = (inp.value || '').trim();
+        if(inp.tagName === 'SELECT' && val === '__otro__'){
+          const otro = document.getElementById(inp.dataset.otro);
+          val = otro ? (otro.value || '').trim() : '';
+        }
+        data[inp.dataset.col] = val;
       });
       // La cuenta elegida: siempre en el campo 'cuenta' (lo lee el calendario).
       const colCuenta = (p.columns || []).find(esColumnaCuenta);
