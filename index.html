@@ -12805,6 +12805,15 @@ function _ppCol(fila, preferida, alternativas){
   return null;
 }
 
+/** Columna de RR de un trade puntual: respeta la elegida en el selector si el
+    trade la tiene; si no, cae a los alias y por último a cualquier columna
+    cuyo nombre contenga "RR". Así funciona con plantillas de distinto esquema. */
+function _ppColRR(fila){
+  const c = _ppCol(fila, ppRRCol(), ['ifvg rr','rr']);
+  if(c) return c;
+  return Object.keys(fila).find(k => /\brr\b/.test(_rgNorm(k))) || null;
+}
+
 /** dd/mm + Año  ->  YYYY-MM-DD  (también acepta fechas ya completas) */
 function _ppFechaDe(fila, cFecha, cAnio){
   const bruto = String(fila[cFecha] == null ? '' : fila[cFecha]).trim();
@@ -12835,22 +12844,27 @@ async function ppLoad(){
     }).filter(x => Object.keys(x.d).length);
     if(!filas.length){ ppState.trades = []; ppState.loaded = true; return; }
 
-    const muestra = filas[0].d;
-    ppState.rawCols = Object.keys(muestra);          // alimenta el selector de modelo
+    // rawCols = unión de columnas de TODAS las plantillas (alimenta el selector
+    // de modelo, que ahora ve los RR de cualquier plantilla).
+    ppState.rawCols = [...new Set(filas.flatMap(f => Object.keys(f.d)))];
 
-    const cFecha = _ppCol(muestra, PP_MAP.colFecha, ['fecha','date']);
-    const cAnio  = _ppCol(muestra, PP_MAP.colAnio,  ['año','anio','year']);
-    const cRR    = _ppCol(muestra, ppRRCol(),       ['ifvg rr','rr']);
-    const cRES   = _ppCol(muestra, PP_MAP.colRES,   ['ifvg res','resultado']);
-    const cMod   = _ppCol(muestra, PP_MAP.colModelo,['setup','modelo']);
-    const cDir   = _ppCol(muestra, PP_MAP.colDir,   ['bias','direccion']);
-    const cInst  = _ppCol(muestra, PP_MAP.colInst,  ['instrumento','activo','simbolo']);
-    const cNotas = _ppCol(muestra, PP_MAP.colNotas, ['observaciones','notas']);
-    const cCuenta= _ppCol(muestra, PP_MAP.colCuenta,['cuenta','account']);
-
+    // IMPORTANTE: las columnas se detectan POR CADA TRADE, no una sola vez.
+    // Cada plantilla puede nombrar Fecha/RR/etc. distinto; antes se detectaba
+    // desde el primer trade y los de otra plantilla quedaban fuera aunque
+    // tuvieran fecha y RR cargados.
     const out = [];
     filas.forEach(({id, d}) => {
-      const fecha = _ppFechaDe(d, cFecha, cAnio);
+      const cFecha = _ppCol(d, PP_MAP.colFecha, ['fecha','date']);
+      const cAnio  = _ppCol(d, PP_MAP.colAnio,  ['año','anio','year']);
+      const cRR    = _ppColRR(d);
+      const cRES   = _ppCol(d, PP_MAP.colRES,   ['ifvg res','resultado']);
+      const cMod   = _ppCol(d, PP_MAP.colModelo,['setup','modelo']);
+      const cDir   = _ppCol(d, PP_MAP.colDir,   ['bias','direccion']);
+      const cInst  = _ppCol(d, PP_MAP.colInst,  ['instrumento','activo','simbolo']);
+      const cNotas = _ppCol(d, PP_MAP.colNotas, ['observaciones','notas']);
+      const cCuenta= _ppCol(d, PP_MAP.colCuenta,['cuenta','account']);
+
+      const fecha = cFecha ? _ppFechaDe(d, cFecha, cAnio) : null;
       if(!fecha) return;                                   // sin fecha no entra al calendario
       const rr = ppNum(cRR ? d[cRR] : '');                 // "-" y vacíos quedan NaN
       if(!isFinite(rr)) return;                            // no ejecutado / sin resultado
