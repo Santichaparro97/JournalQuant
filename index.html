@@ -1059,6 +1059,33 @@ input[type="file"] { display: none; }
   border:1px solid rgba(0,212,255,.18); z-index:10001; pointer-events:none;
 }
 
+/* ── Tira de miniaturas del trade (varios links) ── */
+#ag-shots {
+  position:fixed; bottom:44px; left:50%; transform:translateX(-50%);
+  display:flex; gap:8px; align-items:center; z-index:10002;
+  max-width:min(80vw, 620px); overflow-x:auto; padding:8px 12px;
+  background:rgba(8,13,20,.9); border:1px solid rgba(0,212,255,.18);
+  border-radius:14px; backdrop-filter:blur(6px);
+}
+#ag-shots::-webkit-scrollbar { height:5px; }
+#ag-shots::-webkit-scrollbar-thumb { background:rgba(0,212,255,.3); border-radius:3px; }
+.ag-shot {
+  position:relative; flex-shrink:0; width:78px; height:50px; padding:0;
+  border:2px solid rgba(0,212,255,.25); border-radius:7px; overflow:hidden;
+  background:#0a0f18; cursor:pointer; transition:all .15s; opacity:.7;
+}
+.ag-shot:hover { opacity:1; border-color:rgba(0,212,255,.6); transform:translateY(-2px); }
+.ag-shot.ag-shot-on {
+  opacity:1; border-color:var(--blue2); box-shadow:0 0 12px rgba(0,212,255,.5);
+}
+.ag-shot img { width:100%; height:100%; object-fit:cover; display:block; }
+.ag-shot-n {
+  position:absolute; top:2px; left:3px; font-family:var(--mono); font-size:8px;
+  font-weight:800; color:#fff; background:rgba(0,0,0,.6); border-radius:3px;
+  padding:1px 4px; line-height:1.2;
+}
+.ag-shot.ag-shot-on .ag-shot-n { background:var(--blue2); color:#04121f; }
+
 /* Trade info panel — A LA DERECHA DE LA IMAGEN, alto = alto de la imagen */
 #ag-info {
   width:360px; flex-shrink:0;
@@ -6704,46 +6731,78 @@ function agOpen(index) {
   document.addEventListener('keydown', agKeyNav);
 }
 
+/** Junta TODOS los links del trade (de cualquier columna, y varios por
+    celda separados por línea), sin repetir. El primero es el principal. */
+function agCollectImages(trade){
+  const out = [], visto = new Set();
+  const imgCol = (dynState && dynState.imgCol) ? dynState.imgCol : 'Link Trade';
+  const push = v => jqLinks(v).forEach(u => {
+    if(/^https?:\/\//i.test(u) && !visto.has(u)){ visto.add(u); out.push(u); }
+  });
+  // La columna de imagen principal primero (respeta el orden esperado)
+  if(trade[imgCol] != null) push(trade[imgCol]);
+  Object.keys(trade).forEach(k => { if(k !== imgCol) push(trade[k]); });
+  return out;
+}
+
+/** Carga una imagen en el visor con el mismo fundido de siempre. */
+function agSwapImage(src){
+  const imgEl = document.getElementById('ag-img');
+  if(!imgEl) return;
+  imgEl.classList.remove('visible');
+  imgEl.classList.add('fading');
+  setTimeout(() => {
+    imgEl.style.maxWidth = ''; imgEl.style.maxHeight = '';
+    imgEl.src = src || '';
+    imgEl.onload = () => {
+      const nw = imgEl.naturalWidth, nh = imgEl.naturalHeight;
+      if(imgEl.clientWidth > nw || imgEl.clientHeight > nh){
+        imgEl.style.maxWidth  = 'min(80vw, ' + nw + 'px)';
+        imgEl.style.maxHeight = 'min(80vh, ' + nh + 'px)';
+      }
+      imgEl.classList.remove('fading'); imgEl.classList.add('visible');
+    };
+    imgEl.onerror = () => { imgEl.classList.remove('fading'); imgEl.classList.add('visible'); };
+  }, 120);
+}
+
+/** Cambia a otra imagen del mismo trade (las miniaturas). */
+function agShowShot(i){
+  const imgs = agState._imgs || [];
+  if(i < 0 || i >= imgs.length) return;
+  agState.shotIdx = i;
+  agSwapImage(imgs[i]);
+  agResetZoom();
+  document.querySelectorAll('#ag-shots .ag-shot').forEach((t,j) => t.classList.toggle('ag-shot-on', j===i));
+}
+
+function agRenderShots(){
+  const cont = document.getElementById('ag-shots');
+  if(!cont) return;
+  const imgs = agState._imgs || [];
+  if(imgs.length <= 1){ cont.style.display = 'none'; cont.innerHTML = ''; return; }
+  cont.style.display = 'flex';
+  cont.innerHTML = imgs.map((u,i) =>
+    '<button class="ag-shot'+(i===agState.shotIdx?' ag-shot-on':'')+'" onclick="agShowShot('+i+')" title="Imagen '+(i+1)+(i===0?' (principal)':'')+'">'+
+      '<img src="'+u.replace(/"/g,'&quot;')+'" loading="lazy" alt="">'+
+      '<span class="ag-shot-n">'+(i+1)+'</span>'+
+    '</button>').join('');
+}
+
 function agRender() {
   const { trades, index } = agState;
   if (!trades.length) return;
 
   const trade   = trades[index];
   const imgCol  = (dynState && dynState.imgCol) ? dynState.imgCol : 'Link Trade';
-  const imgEl   = document.getElementById('ag-img');
   const counter = document.getElementById('ag-counter');
-  const imgSrc  = (trade[imgCol] || '').trim();
 
-  // Fade out → swap src → show only after fully loaded
-  imgEl.classList.remove('visible');
-  imgEl.classList.add('fading');
-
-  setTimeout(() => {
-    // Reset any previous inline size constraints before loading new src
-    imgEl.style.maxWidth  = '';
-    imgEl.style.maxHeight = '';
-    imgEl.src = imgSrc;
-
-    imgEl.onload = () => {
-      const nw = imgEl.naturalWidth;
-      const nh = imgEl.naturalHeight;
-
-      // Cap: never render beyond original resolution (prevents upscaling blur)
-      if (imgEl.clientWidth > nw || imgEl.clientHeight > nh) {
-        imgEl.style.maxWidth  = 'min(80vw, ' + nw + 'px)';
-        imgEl.style.maxHeight = 'min(80vh, ' + nh + 'px)';
-      }
-
-      // Only reveal after image is fully decoded at correct size
-      imgEl.classList.remove('fading');
-      imgEl.classList.add('visible');
-    };
-
-    imgEl.onerror = () => {
-      imgEl.classList.remove('fading');
-      imgEl.classList.add('visible');
-    };
-  }, 120);
+  // Todos los links del trade; se muestra el elegido (por defecto el 1º)
+  agState._imgs = agCollectImages(trade);
+  if(agState.shotIdx == null || agState.shotIdx >= agState._imgs.length) agState.shotIdx = 0;
+  const imgSrc = agState._imgs[agState.shotIdx] || (trade[imgCol] || '').trim();
+  agSwapImage(imgSrc);
+  agRenderShots();
 
   // Counter
   if (counter) counter.textContent = `${index + 1} / ${trades.length}`;
@@ -7975,6 +8034,9 @@ function adaptCSVToSchema(){
     <img id="ag-img" src="" alt="">
     <button class="ag-arrow" id="ag-next" onclick="agNav(+1)" title="Siguiente">›</button>
   </div>
+
+  <!-- Miniaturas de los links de ESTE trade (la 1ª se muestra por defecto) -->
+  <div id="ag-shots" style="display:none;"></div>
 
   <div id="ag-counter"></div>
 
@@ -11131,11 +11193,54 @@ async function ppDeleteTrade(id){
 .rg-bool-y{ color:var(--green2); }
 .rg-bool-n{ color:var(--t3); opacity:.55; }
 .rg-link{
-  display:inline-flex; align-items:center; justify-content:center; width:24px; height:20px;
+  display:inline-flex; align-items:center; justify-content:center; gap:3px; min-width:24px; height:20px; padding:0 5px;
   border:1px solid rgba(0,229,212,.3); border-radius:5px; color:var(--cyan);
-  text-decoration:none; font-size:10px; transition:all .15s;
+  text-decoration:none; font-size:10px; transition:all .15s; cursor:pointer;
 }
 .rg-link:hover{ background:rgba(0,229,212,.15); border-color:var(--cyan); }
+.rg-link-n{ font-family:var(--mono); font-size:8.5px; font-weight:800; color:var(--cyan); }
+
+/* ── GESTOR DE LINKS ── */
+#rg-links{
+  position:fixed; z-index:560; background:var(--s2); border:1px solid var(--cyan);
+  border-radius:9px; padding:8px; width:320px; box-shadow:0 14px 40px rgba(0,0,0,.65);
+  display:flex; flex-direction:column; gap:7px;
+}
+.rg-lk-head{
+  font-family:var(--mono); font-size:8.5px; font-weight:800; letter-spacing:1px; color:var(--t3);
+  text-transform:uppercase; padding:2px 4px 5px; border-bottom:1px solid var(--bd);
+}
+.rg-lk-list{ display:flex; flex-direction:column; gap:4px; max-height:220px; overflow-y:auto; }
+.rg-lk-vacio{ font-size:10px; color:var(--t3); padding:8px 4px; }
+.rg-lk-row{ display:flex; align-items:center; gap:6px; }
+.rg-lk-badge{
+  flex-shrink:0; width:20px; height:20px; display:flex; align-items:center; justify-content:center;
+  background:var(--s3); border-radius:5px; font-family:var(--mono); font-size:10px; font-weight:800; color:var(--t2);
+}
+.rg-lk-first .rg-lk-badge{ background:rgba(0,229,212,.18); color:var(--cyan); }
+.rg-lk-url{
+  flex:1; min-width:0; font-family:var(--mono); font-size:10.5px; color:var(--t2);
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-decoration:none;
+}
+.rg-lk-url:hover{ color:var(--cyan); text-decoration:underline; }
+.rg-lk-up, .rg-lk-rm{
+  flex-shrink:0; width:22px; height:22px; background:none; border:1px solid transparent; color:var(--t3);
+  font-size:10px; border-radius:5px; cursor:pointer; transition:all .12s;
+}
+.rg-lk-up:hover{ color:var(--cyan); border-color:rgba(0,229,212,.35); background:rgba(0,229,212,.08); }
+.rg-lk-rm:hover{ color:var(--red2); border-color:rgba(239,68,68,.35); background:rgba(239,68,68,.08); }
+.rg-lk-add{ display:flex; gap:6px; border-top:1px solid var(--bd); padding-top:6px; }
+.rg-lk-new{
+  flex:1; min-width:0; background:var(--s1); border:1px solid var(--bd2); color:var(--tx);
+  font-family:var(--mono); font-size:11px; padding:7px 9px; border-radius:6px; outline:none;
+}
+.rg-lk-new:focus{ border-color:var(--cyan); }
+.rg-lk-addbtn{
+  flex-shrink:0; background:rgba(0,229,212,.1); border:1px solid var(--cyan); color:var(--cyan);
+  font-family:var(--sans); font-size:11px; font-weight:800; padding:0 12px; border-radius:6px; cursor:pointer;
+  transition:background .12s; white-space:nowrap;
+}
+.rg-lk-addbtn:hover{ background:rgba(0,229,212,.2); }
 
 /* ── PANEL DE TIPOS ── */
 #rg-types-panel{
@@ -11585,14 +11690,24 @@ function _rgEsc(s){
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+/** Divide el valor de una celda de link en varios links (uno por línea). */
+function jqLinks(str){
+  return String(str == null ? '' : str)
+    .split(/[\n\r]+/).map(s => s.trim()).filter(Boolean);
+}
+
 function rgCellHtml(value, type, isFormula){
   const raw = (value === null || value === undefined) ? '' : String(value);
   if(raw === '') return '<span class="rg-cell rg-c-empty">·</span>';
   const fx = isFormula ? ' rg-c-formula' : '';
 
   if(type === 'link'){
-    const url = /^https?:\/\//i.test(raw) ? raw : '';
-    if(url) return '<span class="rg-cell"><a class="rg-link" href="'+_rgEsc(url)+'" target="_blank" rel="noopener" title="'+_rgEsc(url)+'">🔗</a></span>';
+    const links = jqLinks(raw);
+    if(links.length){
+      // Muestra un 🔗; si hay varios, un contador. El click abre el gestor.
+      const badge = links.length > 1 ? '<span class="rg-link-n">'+links.length+'</span>' : '';
+      return '<span class="rg-cell"><span class="rg-link" title="'+links.length+' link'+(links.length>1?'s':'')+' — click para ver/agregar">🔗'+badge+'</span></span>';
+    }
     return '<span class="rg-cell rg-c-text'+fx+'" title="'+_rgEsc(raw)+'">'+_rgEsc(raw)+'</span>';
   }
   if(type === 'result'){
@@ -11709,6 +11824,80 @@ function rgRender(){
   if(st) st.innerHTML = '';
   const wrap = document.getElementById('rg-grid-wrap');
   if(wrap) wrap.style.display = '';
+}
+
+/* ── gestor de links (columnas de tipo link, admiten varios) ──
+   El primero de la lista es el "principal": es el que se reproduce por
+   defecto al abrir el trade. Los demás quedan a un click en el modal. */
+function rgCloseLinks(){
+  const p = document.getElementById('rg-links');
+  if(p) p.remove();
+  document.removeEventListener('keydown', _rgLinksKey, true);
+}
+function _rgLinksKey(e){
+  if(e.key === 'Escape'){ e.preventDefault(); e.stopPropagation(); rgCloseLinks(); }
+}
+
+function rgOpenLinks(r, c){
+  rgCloseLinks(); rgClosePicker();
+  if(rgState.editing) rgCancelEdit();
+  const td = rgCellEl(r, c);
+  if(!td) return;
+
+  const el = document.createElement('div');
+  el.id = 'rg-links';
+  document.body.appendChild(el);
+
+  const render = () => {
+    const links = jqLinks(rgState.rows[r][c]);
+    el.innerHTML =
+      '<div class="rg-lk-head">'+_rgEsc(rgState.headers[c])+' · '+links.length+' link'+(links.length!==1?'s':'')+'</div>'+
+      '<div class="rg-lk-list">'+
+        (links.length ? links.map((u,i) =>
+          '<div class="rg-lk-row'+(i===0?' rg-lk-first':'')+'">'+
+            '<span class="rg-lk-badge" title="'+(i===0?'Principal (se reproduce primero)':'Link '+(i+1))+'">'+(i===0?'★':(i+1))+'</span>'+
+            '<a class="rg-lk-url" href="'+_rgEsc(u)+'" target="_blank" rel="noopener" title="'+_rgEsc(u)+'">'+_rgEsc(u)+'</a>'+
+            (i!==0?'<button class="rg-lk-up" data-i="'+i+'" title="Hacer principal">▲</button>':'')+
+            '<button class="rg-lk-rm" data-i="'+i+'" title="Quitar">✕</button>'+
+          '</div>').join('')
+          : '<div class="rg-lk-vacio">Todavía no hay links. Agregá el primero abajo.</div>')+
+      '</div>'+
+      '<div class="rg-lk-add">'+
+        '<input class="rg-lk-new" placeholder="Pegá un link (https://…)">'+
+        '<button class="rg-lk-addbtn">＋ Agregar</button>'+
+      '</div>';
+
+    // Posición junto a la celda
+    const t = td.getBoundingClientRect();
+    const w = 320;
+    el.style.left = Math.max(6, Math.min(t.left, window.innerWidth - w - 6)) + 'px';
+    el.style.top  = (t.bottom + 6 + 240 > window.innerHeight ? Math.max(6, t.top - 246) : t.bottom + 4) + 'px';
+
+    const guardar = (arr) => rgCommitValue(r, c, arr.join('\n'));
+    const inp = el.querySelector('.rg-lk-new');
+    const agregar = () => {
+      const v = (inp.value || '').trim();
+      if(!v) return;
+      const arr = jqLinks(rgState.rows[r][c]); arr.push(v);
+      guardar(arr).then(render);
+      inp.value='';
+    };
+    el.querySelector('.rg-lk-addbtn').addEventListener('click', e => { e.stopPropagation(); agregar(); });
+    inp.addEventListener('keydown', e => { e.stopPropagation(); if(e.key==='Enter'){ e.preventDefault(); agregar(); } });
+    el.querySelectorAll('.rg-lk-rm').forEach(b => b.addEventListener('click', e => {
+      e.stopPropagation(); const arr = jqLinks(rgState.rows[r][c]); arr.splice(+b.dataset.i,1); guardar(arr).then(render);
+    }));
+    el.querySelectorAll('.rg-lk-up').forEach(b => b.addEventListener('click', e => {
+      e.stopPropagation(); const arr = jqLinks(rgState.rows[r][c]); const i=+b.dataset.i;
+      arr.unshift(arr.splice(i,1)[0]); guardar(arr).then(render);
+    }));
+    el.addEventListener('click', e => e.stopPropagation());
+  };
+  render();
+  setTimeout(() => { try{ el.querySelector('.rg-lk-new').focus(); }catch(_){} }, 40);
+
+  document.addEventListener('keydown', _rgLinksKey, true);
+  setTimeout(() => document.addEventListener('click', rgCloseLinks, { once:true }), 0);
 }
 
 /* ── selector de opciones (columnas de selección y resultado) ──
@@ -13419,6 +13608,12 @@ function rgBindGrid(){
     const ed = rgState.editing;
     if(ed && ed.r === r && ed.c === c) return;         // ya se esta editando esta celda
     const tipo = rgState.types[c];
+    // Links: el click abre el gestor (ver / agregar varios links).
+    if(tipo === 'link' && rgIsEditable(c)){
+      rgSelect(r, c, false);
+      rgOpenLinks(r, c);
+      return;
+    }
     // Columnas con opciones: el primer click ya despliega la lista.
     if((tipo === 'select' || tipo === 'result') && rgIsEditable(c)){
       rgSelect(r, c, false);
@@ -13433,12 +13628,13 @@ function rgBindGrid(){
     if(e.target.closest('.rg-editor')) return;
     const td = e.target.closest('td[data-c]');
     if(!td) return;
-    // Doble click = escribir a mano, incluso en columnas de selección:
-    // se cierra el desplegable de opciones y se abre el editor de texto.
     rgClosePicker();
     const r = +td.dataset.r, c = +td.dataset.c;
     const ed = rgState.editing;
     if(ed && ed.r === r && ed.c === c) return;
+    // Links: doble click también abre el gestor.
+    if(rgState.types[c] === 'link' && rgIsEditable(c)){ rgOpenLinks(r, c); return; }
+    // Doble click = escribir a mano, incluso en columnas de selección.
     rgBeginEdit(r, c);
   });
 }
