@@ -11692,8 +11692,13 @@ function _rgEsc(s){
 
 /** Divide el valor de una celda de link en varios links (uno por línea). */
 function jqLinks(str){
-  return String(str == null ? '' : str)
-    .split(/[\n\r]+/).map(s => s.trim()).filter(Boolean);
+  const s = String(str == null ? '' : str);
+  // Extrae los links http(s) estén donde estén: separados por saltos de
+  // línea, espacios, comas o con texto alrededor. Limpia puntuación final.
+  const m = s.match(/https?:\/\/[^\s,;]+/gi);
+  if(m) return m.map(u => u.replace(/[.,;]+$/, ''));
+  // Sin URLs con protocolo: se respeta el valor por líneas (compatibilidad).
+  return s.split(/[\n\r]+/).map(x => x.trim()).filter(Boolean);
 }
 
 function rgCellHtml(value, type, isFormula){
