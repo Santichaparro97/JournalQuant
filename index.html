@@ -4022,6 +4022,8 @@ html, body { background: transparent !important; }
           <button onclick="rgMoreDo('addcol')">＋ Agregar columna</button>
           <button onclick="rgMoreDo('delcol')">－ Eliminar columna</button>
           <div class="rg-more-sep"></div>
+          <button class="rg-more-danger" onclick="rgMoreDo('delsheet')">🗑 Eliminar esta plantilla</button>
+          <div class="rg-more-sep"></div>
           <button onclick="rgMoreDo('types')">⚙ Tipos de columna</button>
           <button onclick="rgMoreDo('reload')">↻ Actualizar desde la base</button>
         </div>
@@ -10876,6 +10878,8 @@ async function ppDeleteTrade(id){
   cursor:pointer; transition:background .12s; white-space:nowrap;
 }
 #rg-more-menu button:hover{ background:rgba(0,229,212,.12); color:var(--cyan); }
+#rg-more-menu button.rg-more-danger{ color:var(--red2); }
+#rg-more-menu button.rg-more-danger:hover{ background:rgba(239,68,68,.12); color:var(--red2); }
 .rg-more-sep{ height:1px; background:var(--bd); margin:4px 2px; }
 
 /* ── SELECTOR DE OPCIONES (primer click) ── */
@@ -11760,6 +11764,57 @@ function rgMoreDo(accion){
   else if(accion === 'reload') rgReload();
   else if(accion === 'addcol') rgAddColumn();
   else if(accion === 'delcol') rgDeleteColumn();
+  else if(accion === 'delsheet') rgDeleteSheet();
+}
+
+/** Elimina la plantilla activa (jq_sheets) y, si tiene, sus trades. */
+async function rgDeleteSheet(){
+  if(!rgState.multiSheet){
+    rgToast('Para eliminar plantillas falta correr el SQL de plantillas.', 'warn');
+    return;
+  }
+  const nombre = rgState.sheet;
+  if(rgState.sheets.length <= 1){
+    rgToast('Es tu única plantilla: no se puede eliminar. Creá otra primero.', 'warn');
+    return;
+  }
+
+  const nTrades = rgState.rows.length;
+  const aviso = nTrades
+    ? 'Vas a eliminar la plantilla «'+nombre+'» y sus '+nTrades+' trade'+(nTrades>1?'s':'')+'.\n\n'+
+      'Los trades se borran de forma definitiva y no se pueden recuperar.\n\n¿Seguro?'
+    : '¿Eliminar la plantilla vacía «'+nombre+'»?';
+  if(!confirm(aviso)) return;
+  // Segunda confirmación si hay datos, para no borrar por error
+  if(nTrades && !confirm('Confirmá otra vez: se eliminarán '+nTrades+' trade'+(nTrades>1?'s':'')+' de «'+nombre+'».')) return;
+
+  rgStatus('<div class="rg-msg-icon">⏳</div>Eliminando plantilla…');
+  try{
+    // 1) Borrar los trades de esa plantilla
+    if(nTrades){
+      await sbApi('jq_trades?hoja=eq.'+encodeURIComponent(nombre), {
+        method:'DELETE', headers:{ 'Prefer':'return=minimal' }
+      });
+    }
+    // 2) Borrar la definición de la plantilla
+    await sbApi('jq_sheets?name=eq.'+encodeURIComponent(nombre), {
+      method:'DELETE', headers:{ 'Prefer':'return=minimal' }
+    });
+
+    // 3) Recargar y saltar a otra plantilla
+    try{ localStorage.removeItem(RG_SHEET_KEY); }catch(_){}
+    await rgLoadSheets();
+    const destino = (rgState.sheets[0] && rgState.sheets[0].name) || '';
+    await rgLoadGrid(destino);
+    rgStatus('');
+    rgRender();
+    rgToast('Plantilla «'+nombre+'» eliminada.', 'ok');
+  }catch(err){
+    console.error('[Registro] eliminar plantilla:', err);
+    rgStatus('');
+    rgRender();
+    rgToast('No se pudo eliminar: '+err.message, 'err');
+  }
 }
 
 /* ── grupos de filas ── */
@@ -13273,9 +13328,13 @@ function rgBindGrid(){
     if(e.target.closest('.rg-editor')) return;
     const td = e.target.closest('td[data-c]');
     if(!td) return;
+    // Doble click = escribir a mano, incluso en columnas de selección:
+    // se cierra el desplegable de opciones y se abre el editor de texto.
+    rgClosePicker();
+    const r = +td.dataset.r, c = +td.dataset.c;
     const ed = rgState.editing;
-    if(ed && ed.r === +td.dataset.r && ed.c === +td.dataset.c) return;
-    rgBeginEdit(+td.dataset.r, +td.dataset.c);
+    if(ed && ed.r === r && ed.c === c) return;
+    rgBeginEdit(r, c);
   });
 }
 
