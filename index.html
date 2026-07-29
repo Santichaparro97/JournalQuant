@@ -4123,18 +4123,19 @@ html, body { background: transparent !important; }
       </div>
       <div id="rg-ns-body">
         <div class="sb-field">
-          <label>Nombre</label>
+          <label>Nombre de la plantilla</label>
           <input type="text" id="rg-ns-name" placeholder="ej: NQ, ES, Cuenta Apex">
         </div>
         <label class="rg-ns-check">
-          <input type="checkbox" id="rg-ns-copy" onchange="document.getElementById('rg-ns-cols').disabled = this.checked">
+          <input type="checkbox" id="rg-ns-copy" onchange="rgNsCopyToggle(this.checked)">
           <span id="rg-ns-copy-lbl">Copiar las columnas de la plantilla actual</span>
         </label>
-        <div class="sb-field">
-          <label>O escribí las columnas de cero</label>
-          <textarea id="rg-ns-cols" rows="5" placeholder="Separadas por coma o una por línea:&#10;&#10;Fecha, Setup, Entrada, SL, TP, Resultado, RR, Notas"></textarea>
+        <div id="rg-ns-builder-wrap">
+          <div class="rg-ns-blabel">Columnas de la plantilla</div>
+          <div id="rg-ns-builder"></div>
+          <button type="button" id="rg-ns-addcol" onclick="rgNsAddRow()">＋ Agregar columna</button>
+          <div class="rg-ns-note">Para cada columna elegí su función. Si es <b>desplegable</b> o <b>checklist</b>, cargá abajo sus opciones (separadas por coma).</div>
         </div>
-        <div class="rg-ns-note">El tipo de cada columna (fecha, número, desplegable…) se detecta solo a medida que vayas cargando datos, y lo podés corregir con el botón ⚙.</div>
         <div id="rg-ns-msg"></div>
       </div>
       <div id="rg-ns-foot">
@@ -11276,6 +11277,36 @@ async function ppDeleteTrade(id){
 .rg-ns-check{ display:flex; align-items:center; gap:9px; font-size:12px; color:var(--t2); cursor:pointer; }
 .rg-ns-check input{ width:16px; height:16px; accent-color:var(--cyan); cursor:pointer; }
 .rg-ns-note{ font-size:10.5px; color:var(--t3); line-height:1.6; }
+.rg-ns-blabel{ font-size:10px; font-weight:800; letter-spacing:1px; text-transform:uppercase; color:var(--t3); margin-bottom:2px; }
+#rg-ns-builder{ display:flex; flex-direction:column; gap:8px; max-height:44vh; overflow-y:auto; padding:2px; }
+.rg-ns-row{ display:flex; flex-direction:column; gap:6px; padding:9px; background:var(--s2); border:1px solid var(--bd); border-radius:9px; }
+.rg-ns-row-top{ display:flex; gap:7px; align-items:center; }
+.rg-ns-cname{
+  flex:1; min-width:0; background:var(--s1); border:1px solid var(--bd2); color:var(--tx);
+  font-family:var(--sans); font-size:13px; padding:8px 10px; border-radius:7px; outline:none;
+}
+.rg-ns-cname:focus{ border-color:var(--cyan); }
+.rg-ns-ctype{
+  flex:0 0 auto; width:170px; background:var(--s1); border:1px solid var(--bd2); color:var(--tx);
+  font-family:var(--sans); font-size:12px; padding:8px 6px; border-radius:7px; outline:none; cursor:pointer;
+}
+.rg-ns-ctype:focus{ border-color:var(--cyan); }
+.rg-ns-crm{
+  flex:0 0 auto; width:30px; height:30px; background:none; border:1px solid transparent; color:var(--t3);
+  font-size:12px; border-radius:7px; cursor:pointer; transition:all .13s;
+}
+.rg-ns-crm:hover{ color:var(--red2); border-color:rgba(239,68,68,.35); background:rgba(239,68,68,.08); }
+.rg-ns-copts{
+  background:var(--s1); border:1px dashed var(--bd2); color:var(--tx);
+  font-family:var(--sans); font-size:12px; padding:7px 10px; border-radius:7px; outline:none; width:100%;
+}
+.rg-ns-copts:focus{ border-color:var(--cyan); border-style:solid; }
+#rg-ns-addcol{
+  align-self:flex-start; background:transparent; border:1px dashed var(--bd2); color:var(--t2);
+  font-family:var(--sans); font-size:12px; font-weight:700; padding:8px 14px; border-radius:8px; cursor:pointer;
+  transition:all .13s; margin-top:2px;
+}
+#rg-ns-addcol:hover{ border-color:var(--cyan); color:var(--cyan); border-style:solid; }
 #rg-ns-msg{ font-size:11px; font-weight:700; font-family:var(--mono); line-height:1.5; }
 #rg-ns-msg.err{ color:var(--red2); } #rg-ns-msg.info{ color:var(--cyan); }
 #rg-ns-foot{ display:flex; gap:10px; padding:13px 17px; border-top:1px solid var(--bd); }
@@ -11415,19 +11446,27 @@ function rgComputeTypes(){
     const colValues = rgState.rows.map(r => r[c]);
     return rgDetectType(h, colValues);
   });
-  // Opciones de los desplegables, sacadas de los valores reales
+  rgBuildOptions();
+}
+
+/** Opciones de cada columna de selección/resultado:
+    primero las PREDEFINIDAS del esquema (en el orden que puso el usuario),
+    después los valores que ya aparecen en los datos. Así una columna nueva
+    sin datos igual muestra las opciones que se le definieron al crearla. */
+function rgBuildOptions(){
   rgState.options = {};
   rgState.types.forEach((t, c) => {
-    if(t !== 'select' && t !== 'result') return;
+    if(t !== 'select' && t !== 'result' && t !== 'checklist') return;
     const seen = new Map();
-    rgState.rows.forEach(r => {
-      const v = r[c];
-      if(v === '' || v === null || v === undefined) return;
-      const s = String(v).trim();
-      if(!s) return;
-      if(!seen.has(s.toLowerCase())) seen.set(s.toLowerCase(), s);
+    ((rgState.colOptions && rgState.colOptions[c]) || []).forEach(o => {
+      const s = String(o).trim();
+      if(s && !seen.has(s.toLowerCase())) seen.set(s.toLowerCase(), s);
     });
-    rgState.options[c] = [...seen.values()].sort((a,b)=>a.localeCompare(b,'es'));
+    rgState.rows.forEach(r => {
+      const s = String(r[c] == null ? '' : r[c]).trim();
+      if(s && !seen.has(s.toLowerCase())) seen.set(s.toLowerCase(), s);
+    });
+    rgState.options[c] = [...seen.values()];
   });
 }
 
@@ -12321,17 +12360,8 @@ async function rgLoadGrid(name){
     return rgDetectType(h, rgState.rows.map(r => r[c]));
   });
 
-  // Opciones de los desplegables desde los valores reales
-  rgState.options = {};
-  rgState.types.forEach((t, c) => {
-    if(t !== 'select' && t !== 'result') return;
-    const seen = new Map();
-    rgState.rows.forEach(r => {
-      const s = String(r[c] == null ? '' : r[c]).trim();
-      if(s && !seen.has(s.toLowerCase())) seen.set(s.toLowerCase(), s);
-    });
-    rgState.options[c] = [...seen.values()].sort((a,b)=>a.localeCompare(b,'es'));
-  });
+  // Opciones: predefinidas del esquema + las que aparezcan en los datos
+  rgBuildOptions();
 
   const meta = rgState.sheets.find(s => s.name === hoja);
   if(meta){ meta.rows = rgState.rows.length; meta.cols = headers.length; }
@@ -12515,6 +12545,64 @@ async function rgConfirmarBorrarColumna(){
 }
 
 /* ── crear una plantilla nueva desde cero ── */
+/* Tipos disponibles al armar columnas (mismos que el agregador individual). */
+const RG_NS_TIPOS = [
+  ['text','📝 Texto o número'],
+  ['select','🔽 Desplegable (una opción)'],
+  ['checklist','☑️ Checklist (varias opciones)'],
+  ['num','— Número'],
+  ['date','— Fecha'],
+  ['time','— Hora'],
+  ['result','— Resultado (Win / Loss / No fill)'],
+  ['bool','— Sí / No'],
+  ['link','— Link']
+];
+function _rgNsTiposHtml(sel){
+  return RG_NS_TIPOS.map(([v,l]) =>
+    '<option value="'+v+'"'+(v===sel?' selected':'')+'>'+l+'</option>').join('');
+}
+
+let _rgNsSeq = 0;
+function rgNsAddRow(nombre, tipo, opciones){
+  const cont = document.getElementById('rg-ns-builder');
+  if(!cont) return;
+  const id = 'nsr'+(++_rgNsSeq);
+  const t = tipo || 'text';
+  const conOpts = (t === 'select' || t === 'checklist' || t === 'result');
+  const row = document.createElement('div');
+  row.className = 'rg-ns-row'; row.dataset.id = id;
+  row.innerHTML =
+    '<div class="rg-ns-row-top">'+
+      '<input class="rg-ns-cname" placeholder="Nombre de la columna" value="'+_rgEsc(nombre||'')+'">'+
+      '<select class="rg-ns-ctype" onchange="rgNsTypeChange(\''+id+'\')">'+_rgNsTiposHtml(t)+'</select>'+
+      '<button type="button" class="rg-ns-crm" onclick="rgNsRemoveRow(\''+id+'\')" title="Quitar columna">✕</button>'+
+    '</div>'+
+    '<input class="rg-ns-copts" placeholder="Opciones separadas por coma: Alcista, Bajista, Rango"'+
+      ' value="'+_rgEsc(opciones||'')+'"'+(conOpts?'':' style="display:none"')+'>';
+  cont.appendChild(row);
+  return id;
+}
+function rgNsRemoveRow(id){
+  const row = document.querySelector('#rg-ns-builder .rg-ns-row[data-id="'+id+'"]');
+  if(!row) return;
+  if(document.querySelectorAll('#rg-ns-builder .rg-ns-row').length <= 1){
+    row.querySelector('.rg-ns-cname').value = '';
+    return;                                   // siempre queda al menos una fila
+  }
+  row.remove();
+}
+function rgNsTypeChange(id){
+  const row = document.querySelector('#rg-ns-builder .rg-ns-row[data-id="'+id+'"]');
+  if(!row) return;
+  const t = row.querySelector('.rg-ns-ctype').value;
+  const opts = row.querySelector('.rg-ns-copts');
+  opts.style.display = (t === 'select' || t === 'checklist' || t === 'result') ? 'block' : 'none';
+}
+function rgNsCopyToggle(checked){
+  const wrap = document.getElementById('rg-ns-builder-wrap');
+  if(wrap) wrap.style.display = checked ? 'none' : 'block';
+}
+
 function rgNewSheet(){
   const modal = document.getElementById('rg-ns-modal');
   if(!modal) return;
@@ -12523,9 +12611,11 @@ function rgNewSheet(){
     return;
   }
   document.getElementById('rg-ns-name').value = '';
-  document.getElementById('rg-ns-cols').value = '';
   document.getElementById('rg-ns-copy').checked = false;
   document.getElementById('rg-ns-copy-lbl').textContent = 'Copiar las ' + rgState.headers.length + ' columnas de "' + rgState.sheet + '"';
+  rgNsCopyToggle(false);
+  const cont = document.getElementById('rg-ns-builder');
+  if(cont){ cont.innerHTML = ''; rgNsAddRow(); rgNsAddRow(); rgNsAddRow(); }
   const msg = document.getElementById('rg-ns-msg'); msg.textContent = ''; msg.className = '';
   const btn = document.getElementById('rg-ns-btn'); btn.disabled = false; btn.textContent = 'Crear plantilla';
   modal.style.display = 'flex';
@@ -12546,7 +12636,6 @@ function _rgNsMsg(t, c){
 async function rgCreateSheet(){
   const clean = (document.getElementById('rg-ns-name').value || '').trim();
   const copy  = document.getElementById('rg-ns-copy').checked;
-  const raw   = (document.getElementById('rg-ns-cols').value || '').trim();
 
   if(!clean){ _rgNsMsg('⚠ Poné un nombre para la plantilla.', 'err'); return; }
   if(rgState.sheets.some(s => s.name.toLowerCase() === clean.toLowerCase())){
@@ -12557,11 +12646,27 @@ async function rgCreateSheet(){
   if(copy){
     columns = rgColsForSave();
   } else {
-    // Acepta separadas por coma o una por linea
-    columns = raw.split(/[,\n]/).map(s => s.trim()).filter(Boolean)
-                 .map((name,i) => ({ name, order:i, type:null }));
+    columns = [];
+    const vistos = new Set();
+    let dup = null;
+    document.querySelectorAll('#rg-ns-builder .rg-ns-row').forEach(row => {
+      const name = (row.querySelector('.rg-ns-cname').value || '').trim();
+      if(!name) return;                                  // filas vacías se ignoran
+      const key = name.toLowerCase();
+      if(vistos.has(key)){ dup = name; return; }
+      vistos.add(key);
+      const type = row.querySelector('.rg-ns-ctype').value || 'text';
+      const col = { name, order: columns.length, type };
+      if(type === 'select' || type === 'checklist' || type === 'result'){
+        const ops = (row.querySelector('.rg-ns-copts').value || '')
+          .split(/[,\n]/).map(s => s.trim()).filter(Boolean);
+        if(ops.length) col.options = ops;
+      }
+      columns.push(col);
+    });
+    if(dup){ _rgNsMsg('⚠ Hay dos columnas con el nombre «'+dup+'».', 'err'); return; }
   }
-  if(!columns.length){ _rgNsMsg('⚠ Escribí al menos una columna (o tildá copiar las actuales).', 'err'); return; }
+  if(!columns.length){ _rgNsMsg('⚠ Cargá al menos una columna (o tildá copiar las actuales).', 'err'); return; }
 
   const btn = document.getElementById('rg-ns-btn');
   btn.disabled = true; btn.textContent = 'Creando…';
