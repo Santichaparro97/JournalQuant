@@ -6766,14 +6766,21 @@ function updateGallery(filteredTrades) {
 
   const imgCol = (dynState && dynState.imgCol) ? dynState.imgCol : 'Link Trade';
 
+  // Un trade entra a la galería si tiene AL MENOS un link reproducible.
+  // Se prioriza la columna elegida; si esa no tiene, se busca en cualquier
+  // otra (mismo criterio que el visor con agCollectImages).
+  const primerLink = t => {
+    const propia = jqLinks(t[imgCol]).filter(u => /^https?:\/\//i.test(u));
+    if(propia.length) return propia[0];
+    const todos = (typeof agCollectImages === 'function') ? agCollectImages(t) : [];
+    return todos[0] || '';
+  };
+
   // Build array of trades that have a valid image link
-  agState.trades = filteredTrades.filter(t => {
-    const l = (t[imgCol] || '').trim();
-    return l !== '';
-  });
+  agState.trades = filteredTrades.filter(t => primerLink(t) !== '');
 
   agState.trades.forEach((trade, index) => {
-    const cleanLink = trade[imgCol].trim();
+    const cleanLink = primerLink(trade);
 
     const wrapper = document.createElement('div');
     wrapper.style.cssText = 'width:200px;margin:10px;cursor:pointer;border-radius:8px;overflow:hidden;border:1px solid rgba(0,212,255,.12);transition:all .15s;';
