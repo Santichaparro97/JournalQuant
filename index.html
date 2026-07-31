@@ -5444,10 +5444,13 @@ function normBool(v){
   return u;
 }
 
-function filterTrades(filters){
+function filterTrades(filters, opts){
+  const skipExec = opts && opts.skipExec;
   return csvData.filter(row=>{
-    // Exclude no-fill trades before any filter check
-    if(!isExecuted(row)) return false;
+    // Exclude no-fill trades before any filter check. Se puede omitir para
+    // la galería / métricas de plantillas cuyas columnas de resultado no son
+    // las de iFVG (el motor de métricas ya valida y autodetecta por su cuenta).
+    if(!skipExec && !isExecuted(row)) return false;
 
     return Object.entries(filters).every(([k,v])=>{
       if(!v) return true;
@@ -6584,9 +6587,16 @@ function dynRefreshExistingVals(){
 
 function runAnalysis(){
   const filters  = getFilters();
-  const filtered0 = mbFilterSheet(filterTrades(filters));
-  const filtered  = dynApplyFilters(filtered0);
-  const stats    = computeStats(filtered);
+  // Set base: plantilla elegida + filtros de UI, SIN exigir resultado. Así la
+  // galería muestra imágenes de cualquier plantilla y el motor de métricas
+  // recibe los datos y autodetecta las columnas de resultado/RR que tenga.
+  const base0 = mbFilterSheet(filterTrades(filters, { skipExec:true }));
+  const base  = dynApplyFilters(base0);
+  // computeStats corre primero: si la plantilla usa otras columnas de
+  // resultado, su autodetección las resuelve (y deja RES_COL apuntando bien).
+  const stats    = computeStats(base);
+  // Solo trades ejecutados (win/loss) para los análisis que lo asumen.
+  const filtered = base.filter(isExecuted);
   const {verdict,vclass,alerts,score,conf} = buildVerdict(stats,filters);
 
   renderMBar(stats,alerts);
@@ -6595,7 +6605,7 @@ function runAnalysis(){
   updateFCCount();
 
 
-  updateGallery(filtered);
+  updateGallery(base);
 
 }
 
