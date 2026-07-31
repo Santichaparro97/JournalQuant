@@ -7841,7 +7841,8 @@ function openMappingModal(){
   const m = document.getElementById('map-modal');
   if(!m) return;
 
-  const headers = Object.keys(csvData[0] || {});
+  // Columnas de la plantilla elegida en Métricas (o de todas si es "Todas").
+  const headers = dynGetAllCols();
 
   ['result','rr','date','image','obs'].forEach(role => {
     const sel = document.getElementById('map-' + role);
@@ -7900,6 +7901,10 @@ async function _mapAppendPlantillaCols(shown, roleCols){
   catch(_){ return; }                              // tabla nueva aún no creada
   if(!rows || !rows.length) return;
 
+  // Si hay una plantilla elegida en Métricas, solo se ofrecen SUS columnas.
+  if(mbSheet) rows = rows.filter(r => r.name === mbSheet);
+  if(!rows.length) return;
+
   const fl = document.getElementById('map-filters-list');
   const m  = document.getElementById('map-modal');
   if(!fl || !m || !m.classList.contains('open')) return;   // se cerró mientras cargaba
@@ -7934,7 +7939,7 @@ function closeMappingModal(){
 }
 
 function mappingAutoFill(){
-  const headers = Object.keys(csvData[0] || {});
+  const headers = dynGetAllCols();
   const detected = _autoDetectSchema(headers);
   ['result','rr','date','image','obs'].forEach(role => {
     const sel = document.getElementById('map-' + role);
