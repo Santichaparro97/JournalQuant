@@ -2433,6 +2433,27 @@ html, body { background: transparent !important; }
 }
 .malert { border-radius: 6px !important; padding: 3px 10px !important; }
 
+/* ── Selector de plantilla en la barra de métricas ── */
+.mbar-sheet {
+  flex: 0 0 auto !important;
+  min-width: 132px !important;
+  justify-content: center !important;
+  gap: 4px;
+  background: linear-gradient(135deg, rgba(34,243,255,.10), rgba(16,26,46,.4)) !important;
+}
+.mbar-sheet .mbar-lbl { margin-bottom: 4px !important; }
+.mbar-sheet select {
+  width: 100%; max-width: 150px;
+  background: rgba(8,13,24,.6); color: var(--tx);
+  border: 1px solid rgba(34,243,255,.3); border-radius: 7px;
+  font-family: var(--mono); font-size: 12px; font-weight: 700;
+  padding: 5px 8px; outline: none; cursor: pointer;
+  text-align: center; text-align-last: center;
+}
+.mbar-sheet select:hover { border-color: rgba(34,243,255,.6); }
+.mbar-sheet select:focus { border-color: var(--cyan); }
+.mbar-sheet select option { background: #0a0f1c; color: var(--tx); }
+
 /* ── MAIN — separación entre columnas por gap ─────── */
 #main {
   padding: 14px 14px 0 !important;
@@ -3752,6 +3773,12 @@ html, body { background: transparent !important; }
 
 <!-- METRICS BAR -->
 <div id="mbar">
+  <div class="mbar-item mbar-sheet" id="mb-sheet-item" style="display:none;">
+    <div class="mbar-lbl">Plantilla</div>
+    <select id="mb-sheet" onchange="mbSetSheet(this.value)" title="Elegí qué plantilla ver en las métricas">
+      <option value="">Todas</option>
+    </select>
+  </div>
   <div class="mbar-item m-n" id="mb-wr">
     <div class="mbar-lbl">Win Rate</div>
     <div class="mbar-val" id="mv-wr">—</div>
@@ -6478,9 +6505,52 @@ function trClick(e, idx){
 // ══════════════════════════════════════════════
 //  MAIN RUN
 // ══════════════════════════════════════════════
+// Plantilla elegida en Métricas ('' = todas las plantillas juntas).
+let mbSheet = '';
+function mbFilterSheet(trades){
+  if(!mbSheet) return trades;
+  return trades.filter(t => (t.__hoja || '') === mbSheet);
+}
+
+/** Llena el desplegable de plantillas de la barra de métricas a partir de
+    las hojas presentes en csvData. Se oculta si hay una sola plantilla. */
+function mbPopulateSheets(){
+  const sel  = document.getElementById('mb-sheet');
+  const item = document.getElementById('mb-sheet-item');
+  if(!sel || !item) return;
+
+  const counts = new Map();
+  (csvData || []).forEach(t => {
+    const h = t.__hoja || '';
+    counts.set(h, (counts.get(h) || 0) + 1);
+  });
+
+  // Con una sola plantilla el selector no aporta nada: se oculta.
+  if(counts.size <= 1){ item.style.display = 'none'; sel.value = ''; mbSheet = ''; return; }
+
+  const label = h => h === '' ? '(sin plantilla)' : h;
+  const hojas = [...counts.keys()].sort((a,b) => label(a).localeCompare(label(b), 'es'));
+  const prev  = mbSheet;
+
+  sel.innerHTML =
+    '<option value="">Todas (' + (csvData ? csvData.length : 0) + ')</option>' +
+    hojas.map(h => '<option value="' + _rgEsc(h) + '">' + _rgEsc(label(h)) + ' (' + counts.get(h) + ')</option>').join('');
+
+  // Se conserva la plantilla elegida si sigue existiendo.
+  if(prev && counts.has(prev)){ sel.value = prev; }
+  else { sel.value = ''; mbSheet = ''; }
+  item.style.display = '';
+}
+
+/** Cambia la plantilla activa en Métricas y recalcula. */
+function mbSetSheet(v){
+  mbSheet = v || '';
+  try{ runAnalysis(); }catch(e){ console.error('[Métricas] plantilla:', e); }
+}
+
 function runAnalysis(){
   const filters  = getFilters();
-  const filtered0 = filterTrades(filters);
+  const filtered0 = mbFilterSheet(filterTrades(filters));
   const filtered  = dynApplyFilters(filtered0);
   const stats    = computeStats(filtered);
   const {verdict,vclass,alerts,score,conf} = buildVerdict(stats,filters);
@@ -12460,12 +12530,14 @@ async function loadGoogleSheetData(){ /* Supabase es la fuente ahora */ }
 
 /* ── 1) csvData ahora sale de Supabase (alimenta Pre-Open, Dashboard y Quant Lab) ── */
 async function sbLoadTrades(){
-  const rows = await sbSelect('jq_trades', 'select=id,data,orden&order=orden.asc');
-  // El id va como propiedad NO enumerable: hace falta para guardar cambios
-  // desde el modal, pero no debe aparecer como una columna más.
+  const rows = await sbSelect('jq_trades', 'select=id,data,orden,hoja&order=orden.asc');
+  // El id y la hoja (plantilla) van como propiedades NO enumerables: hacen
+  // falta para guardar / filtrar por plantilla, pero no deben aparecer como
+  // una columna más en las métricas ni en la grilla.
   csvData = (rows || []).map(r => {
     const d = r.data || {};
-    Object.defineProperty(d, '__id', { value: r.id, enumerable: false, writable: true });
+    Object.defineProperty(d, '__id',   { value: r.id,       enumerable: false, writable: true });
+    Object.defineProperty(d, '__hoja', { value: r.hoja || '', enumerable: false, writable: true });
     return d;
   });
 
@@ -12474,6 +12546,7 @@ async function sbLoadTrades(){
     tag.textContent = csvData.length + ' TRADES (supabase)';
     tag.className = 'h-tag ok';
   }
+  try{ if(typeof mbPopulateSheets === 'function') mbPopulateSheets(); }catch(_){}
   try{ if(typeof refreshDynamicCols === 'function') refreshDynamicCols(); }catch(_){}
   try{ if(typeof populateDDs === 'function') populateDDs(); }catch(_){}
   try{ if(typeof adaptFiltersToCSV === 'function') adaptFiltersToCSV(); }catch(_){}
