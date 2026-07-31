@@ -5347,7 +5347,7 @@ function populateDDs(){
   ['bias','wo','es','rango','target','pda','erl','stdv','mmxm','liq','smt'].forEach(k=>{
     const sel = document.getElementById('f-'+k); if(!sel) return;
     const col = CMAP[k];
-    const vals = [...new Set(csvData.map(r=>r[col]).filter(v=>v&&v!==''))]
+    const vals = [...new Set(mbScopedData().map(r=>r[col]).filter(v=>v&&v!==''))]
       .sort((a,b)=>{
         const na=parseInt(a,10), nb=parseInt(b,10);
         if(!isNaN(na)&&!isNaN(nb)) return na-nb;
@@ -6511,6 +6511,12 @@ function mbFilterSheet(trades){
   if(!mbSheet) return trades;
   return trades.filter(t => (t.__hoja || '') === mbSheet);
 }
+/** Trades del alcance activo: la plantilla elegida, o todos si es "Todas".
+    Es la fuente para armar columnas y valores de los selectores. */
+function mbScopedData(){
+  if(!mbSheet) return csvData;
+  return csvData.filter(t => (t.__hoja || '') === mbSheet);
+}
 
 /** Llena el desplegable de plantillas de la barra de métricas a partir de
     las hojas presentes en csvData. Se oculta si hay una sola plantilla. */
@@ -6542,10 +6548,38 @@ function mbPopulateSheets(){
   item.style.display = '';
 }
 
-/** Cambia la plantilla activa en Métricas y recalcula. */
+/** Cambia la plantilla activa en Métricas y recalcula. Al cambiar de
+    plantilla, los selectores de columna y los valores de los filtros pasan
+    a ofrecer las columnas de esa plantilla. */
 function mbSetSheet(v){
   mbSheet = v || '';
+  // Las columnas/valores cacheados eran del alcance anterior: se descartan.
+  if(dynState) dynState.colCache = {};
+  // Reconstruir los selectores de columna con las columnas de la plantilla.
+  try{ if(typeof dynRefreshImgSel === 'function') dynRefreshImgSel(); }catch(_){}
+  try{ if(typeof dynRefreshRRSel === 'function') dynRefreshRRSel(); }catch(_){}
+  try{ if(typeof dynRefreshExistingVals === 'function') dynRefreshExistingVals(); }catch(_){}
+  try{ if(typeof populateDDs === 'function') populateDDs(); }catch(_){}
   try{ runAnalysis(); }catch(e){ console.error('[Métricas] plantilla:', e); }
+}
+
+/** Repuebla los desplegables de valores de los filtros dinámicos ya
+    agregados, respetando la selección actual si sigue existiendo en la
+    plantilla. Si el valor ya no existe, se limpia ese filtro. */
+function dynRefreshExistingVals(){
+  if(!dynState || !dynState.cats) return;
+  Object.keys(dynState.cats).forEach(cat => {
+    (dynState.cats[cat] || []).forEach(f => {
+      const block = document.getElementById(f.id);
+      if(!block) return;
+      const sel = block.querySelector('.frow-dyn-val');
+      if(!sel) return;
+      dynRefreshValSel(sel, f.col);
+      const vals = dynGetVals(f.col);
+      if(f.value && vals.indexOf(f.value) >= 0){ sel.value = f.value; sel.classList.add('active'); }
+      else { f.value = ''; }
+    });
+  });
 }
 
 function runAnalysis(){
@@ -7227,8 +7261,9 @@ function _ordRank(v){
 // ── Memoised unique values — sort by ordinal/numeric/alpha ──
 function dynGetVals(col){
   if(!csvData.length || !col) return [];
-  if(dynState.colCache[col]) return dynState.colCache[col];
-  const vals = [...new Set(csvData.map(r=>(r[col]||'').trim()).filter(Boolean))];
+  const ck = (mbSheet || '*') + '|' + col;          // cache por plantilla
+  if(dynState.colCache[ck]) return dynState.colCache[ck];
+  const vals = [...new Set(mbScopedData().map(r=>(r[col]||'').trim()).filter(Boolean))];
 
   // Detectar si los valores son días/meses
   const ordCount = vals.filter(v => _ordRank(v) !== null).length;
@@ -7249,12 +7284,19 @@ function dynGetVals(col){
     });
   }
 
-  dynState.colCache[col] = vals;
+  dynState.colCache[ck] = vals;
   return vals;
 }
 
+/** Columnas disponibles en el alcance activo (plantilla elegida). Une las
+    claves de TODOS sus trades, no solo del primero, para no perder columnas
+    que estén vacías en el primer registro. */
 function dynGetAllCols(){
-  return csvData.length ? Object.keys(csvData[0]) : [];
+  const data = mbScopedData();
+  if(!data.length) return [];
+  const seen = new Set(), out = [];
+  data.forEach(r => Object.keys(r).forEach(k => { if(!seen.has(k)){ seen.add(k); out.push(k); } }));
+  return out;
 }
 
 function dynBuildColOptions(el, selected){
