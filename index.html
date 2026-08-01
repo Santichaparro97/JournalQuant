@@ -6436,7 +6436,7 @@ function renderC2(filtered,stats){
     const target = (t[_targetCol] || '').toString().trim() || '—';
     const rango  = (t[_rangoCol]  || '').toString().trim() || '—';
 
-    return `<div class="tr-row ${isW?'tw':'tl'}" onclick="trClick(event,${obsIdx})" title="Click — ver imagen del trade${hasContent ? ' · Doble-click — ver observación' : ''}" ondblclick="${hasContent ? `event.stopPropagation();openObsIdx(${obsIdx})` : ''}">
+    return `<div class="tr-row ${isW?'tw':'tl'}" onclick="trClick(event,${obsIdx})" title="Click — abrir el trade completo${hasContent ? ' · Doble-click — ver observación' : ''}" ondblclick="${hasContent ? `event.stopPropagation();openObsIdx(${obsIdx})` : ''}">
       <span class="tx-d">${fecha}</span>
       <span class="${isW?'tx-g':'tx-r'}">${isW?'WIN':'LOSS'}</span>
       <span class="${isW?'tx-g':'tx-r'}">${rrS}</span>
@@ -6448,7 +6448,7 @@ function renderC2(filtered,stats){
 }
 
 // ══════════════════════════════════════════════
-//  TRADE ROW CLICK → ABRIR IMAGEN DEL TRADE
+//  TRADE ROW CLICK → ABRIR EL TRADE COMPLETO (igual que la galería)
 // ══════════════════════════════════════════════
 function trClick(e, idx){
   // No abrir si el click fue sobre la celda de observación (tiene su propio modal)
@@ -6457,47 +6457,15 @@ function trClick(e, idx){
   const list = window._dispTrades50 || [];
   const trade = list[idx];
   if(!trade) return;
+  if(typeof agState === 'undefined' || !agState || typeof agOpen !== 'function') return;
 
-  const imgCol = (typeof dynState !== 'undefined' && dynState && dynState.imgCol)
-    ? dynState.imgCol
-    : 'Link Trade';
-  const link = (trade[imgCol] || '').toString().trim();
-
-  if(!link){
-    // No hay imagen para este trade — feedback sutil
-    const row = e && e.currentTarget;
-    if(row){
-      row.style.transition = 'box-shadow .2s';
-      row.style.boxShadow = 'inset 0 0 0 1px rgba(255,194,74,.45), 0 0 12px rgba(255,194,74,.15)';
-      setTimeout(()=>{ row.style.boxShadow = ''; }, 700);
-    }
-    return;
-  }
-
-  if(typeof agState === 'undefined' || !agState) return;
-  if(typeof agOpen !== 'function') return;
-
-  const linkDe = t => (t[imgCol] || '').toString().trim();
-
-  // agState.trades es un efecto secundario de updateGallery(): si la galería
-  // nunca se renderizó, o se renderizó con otro filtro, este trade no está y
-  // antes se salía en silencio (la imagen simplemente no abría). Ahora se
-  // reconstruye la lista a demanda desde los trades visibles.
-  let matchIdx = (agState.trades || []).findIndex(t => linkDe(t) === link);
-
-  if(matchIdx < 0){
-    const conImagen = list.filter(t => linkDe(t) !== '');
-    matchIdx = conImagen.findIndex(t => linkDe(t) === link);
-    if(matchIdx >= 0){
-      agState.trades = conImagen;
-    } else {
-      // El trade tiene link pero no está en la lista visible: abrirlo solo.
-      agState.trades = [trade];
-      matchIdx = 0;
-    }
-  }
-
-  agOpen(matchIdx);
+  // Se abre el mismo visor completo que la galería. La lista de contexto es la
+  // de la columna de estadísticas, así las flechas navegan esos trades. El
+  // visor junta las imágenes de cualquier columna (agCollectImages); si el
+  // trade no tiene imagen, igual se abre mostrando la ficha del trade.
+  agState.trades  = list;
+  agState.shotIdx = 0;
+  agOpen(idx);
 }
 
 // ══════════════════════════════════════════════
