@@ -14580,6 +14580,9 @@ async function sbBootData(){
   padding:9px 18px; border-radius:8px; font-family:var(--sans);
   font-size:11px; font-weight:800; letter-spacing:1px; cursor:pointer; transition:all .2s;
 }
+#at-progress{ flex:1; text-align:center; font-family:var(--mono); font-size:10px; letter-spacing:.5px; color:var(--t2); }
+#at-progress b{ color:var(--cyan); }
+.at-qcount{ font-family:var(--mono); font-size:10px; color:var(--t3); letter-spacing:1px; text-transform:uppercase; margin-bottom:6px; }
 .at-btn-ghost{ background:transparent; border:1px solid rgba(120,180,255,.25); color:var(--t2); }
 .at-btn-ghost:hover{ border-color:var(--cyan); color:var(--tx); }
 .at-btn-primary{ background:linear-gradient(135deg,#16a34a,#22c55e); border:1px solid rgba(34,197,94,.5); color:#fff; box-shadow:0 4px 18px rgba(34,197,94,.25); }
@@ -14602,6 +14605,8 @@ async function sbBootData(){
     <div id="at-body"></div>
     <div id="at-foot">
       <button class="at-btn at-btn-ghost" id="at-back" type="button" onclick="atBack()">‹ Atrás</button>
+      <div id="at-progress"></div>
+      <button class="at-btn at-btn-primary" id="at-next" type="button" onclick="atNext()" style="display:none;">Siguiente ›</button>
       <button class="at-btn at-btn-primary" id="at-save" type="button" onclick="atSave()" style="display:none;">Guardar trade</button>
     </div>
   </div>
@@ -14609,7 +14614,7 @@ async function sbBootData(){
 
 <script id="at-logic">
 (function(){
-  const atState = { step:1, cuenta:null, plantilla:null, plantillas:[], multiSheet:false, valuesByCol:{} };
+  const atState = { step:1, cuenta:null, plantilla:null, plantillas:[], multiSheet:false, valuesByCol:{}, colIdx:0, answers:{} };
   const $ = id => document.getElementById(id);
   const esc = s => (typeof _rgEsc === 'function' ? _rgEsc(s) : String(s==null?'':s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])));
   const norm = s => (typeof _rgNorm === 'function' ? _rgNorm(s) : String(s||'').toLowerCase().trim());
@@ -14632,7 +14637,7 @@ async function sbBootData(){
       if(typeof sbGateShow === 'function') sbGateShow();
       return;
     }
-    atState.step = 1; atState.cuenta = null; atState.plantilla = null; atState.valuesByCol = {};
+    atState.step = 1; atState.cuenta = null; atState.plantilla = null; atState.valuesByCol = {}; atState.colIdx = 0; atState.answers = {};
     atState.presetDate = (typeof presetDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(presetDate)) ? presetDate : null;
     $('at-modal').classList.add('open');
     document.addEventListener('keydown', atEsc);
@@ -14650,8 +14655,50 @@ async function sbBootData(){
   function atEsc(e){ if(e.key === 'Escape') atClose(); }
 
   window.atBack = function(){
+    // En el paso 3 (una columna a la vez): retroceder de a una columna.
+    if(atState.step === 3 && atState.colIdx > 0){
+      atCaptureCurrent();
+      atState.colIdx--;
+      renderPaso3();
+      return;
+    }
     if(atState.step > 1){ atState.step--; render(); }
     else atClose();
+  };
+
+  // Columnas de la plantilla que hay que completar a mano (sin 'cuenta' ni derivadas).
+  function atFillCols(){
+    const p = atState.plantilla;
+    if(!p) return [];
+    return (p.columns || []).filter(c => c && c.name && !esColumnaCuenta(c) && !esColumnaDerivada(c));
+  }
+
+  // Guarda el valor del campo visible actual en atState.answers.
+  function atCaptureCurrent(){
+    const cols = atFillCols();
+    const c = cols[atState.colIdx];
+    if(!c) return;
+    const box = document.querySelector('#at-body [data-checklist]');
+    if(box){
+      atState.answers[c.name] = [...box.querySelectorAll('input[type=checkbox]:checked')].map(cb => cb.value).join(', ');
+      return;
+    }
+    const inp = document.querySelector('#at-body [data-col]');
+    if(inp){
+      let val = (inp.value || '').trim();
+      if(inp.tagName === 'SELECT' && val === '__otro__'){
+        const otro = document.getElementById(inp.dataset.otro);
+        val = otro ? (otro.value || '').trim() : '';
+      }
+      atState.answers[c.name] = val;
+    }
+  }
+
+  // Avanzar a la siguiente columna (o quedarse en la última para guardar).
+  window.atNext = function(){
+    atCaptureCurrent();
+    const cols = atFillCols();
+    if(atState.colIdx < cols.length - 1){ atState.colIdx++; renderPaso3(); }
   };
 
   async function cargarPlantillas(){
@@ -14699,7 +14746,12 @@ async function sbBootData(){
     for(const d of document.querySelectorAll('#at-steps .at-stepdot'))
       d.classList.toggle('on', Number(d.dataset.s) <= atState.step);
     $('at-back').textContent = atState.step > 1 ? '‹ Atrás' : '✕ Cancelar';
-    $('at-save').style.display = atState.step === 3 ? '' : 'none';
+    // Los botones Siguiente/Guardar los gestiona renderPaso3 según la columna.
+    if(atState.step !== 3){
+      $('at-save').style.display = 'none';
+      $('at-next').style.display = 'none';
+      $('at-progress').innerHTML = '';
+    }
 
     const crumb = [];
     if(atState.cuenta) crumb.push('Cuenta: <b>'+esc(atState.cuenta)+'</b>');
@@ -14748,6 +14800,8 @@ async function sbBootData(){
   window.atPickPlantilla = async function(i){
     atState.plantilla = atState.plantillas[i];
     atState.step = 3;
+    atState.colIdx = 0;
+    atState.answers = {};
     $('at-body').innerHTML = '<div class="at-stepsub">Cargando columnas…</div>';
     render();
     await cargarValores(atState.plantilla);
@@ -14775,45 +14829,95 @@ async function sbBootData(){
     if(show){ otro.value = ''; otro.focus(); }
   };
 
+  // HTML del campo de UNA columna, prellenado con lo ya respondido (atState.answers).
+  function atFieldHTML(c, i){
+    const t = norm(c.type);
+    const prev = atState.answers[c.name];
+    const has = prev != null;
+    let opts = atColOpts(c);
+    if(!opts.length && t === 'result') opts = ['Win','Loss','No fill'];
+    if(!opts.length && t === 'bool')   opts = ['Sí','No'];
+
+    if(t === 'checklist' && opts.length){
+      const marcados = new Set(String(prev||'').split(',').map(s => s.trim()).filter(Boolean));
+      return '<div class="at-check" data-checklist="'+esc(c.name)+'">' +
+        opts.map(o => '<label class="at-checkitem"><input type="checkbox" value="'+esc(o)+'"'+(marcados.has(o)?' checked':'')+'><span>'+esc(o)+'</span></label>').join('') +
+        '</div>';
+    }
+    if(esColumnaFecha(c)){
+      const val = has ? prev : (atState.presetDate || '');
+      return '<input type="date" data-col="'+esc(c.name)+'"'+(val ? ' value="'+esc(val)+'"' : '')+'>';
+    }
+    if(t === 'time'){
+      return '<input type="time" data-col="'+esc(c.name)+'"'+(has ? ' value="'+esc(prev)+'"' : '')+'>';
+    }
+    if(t === 'num'){
+      return '<input type="number" step="any" data-col="'+esc(c.name)+'" placeholder="…"'+(has ? ' value="'+esc(prev)+'"' : '')+'>';
+    }
+    if(opts.length){
+      const sid = 'at-sel-'+i, oid = 'at-otro-'+i;
+      const enOpts = has && opts.some(o => o === prev);
+      const esOtro = has && prev !== '' && !enOpts;
+      return '<select id="'+sid+'" data-col="'+esc(c.name)+'" data-otro="'+oid+'" onchange="atSelOtro(this)">' +
+          '<option value="">— elegir —</option>' +
+          opts.map(o => '<option value="'+esc(o)+'"'+(o===prev?' selected':'')+'>'+esc(o)+'</option>').join('') +
+          '<option value="__otro__"'+(esOtro?' selected':'')+'>✏️ Otro…</option>' +
+        '</select>' +
+        '<input type="text" id="'+oid+'" placeholder="Escribí el valor…" style="'+(esOtro?'':'display:none;')+'margin-top:6px;"'+(esOtro?' value="'+esc(prev)+'"':'')+'>';
+    }
+    return '<input type="text" data-col="'+esc(c.name)+'" placeholder="…"'+(has ? ' value="'+esc(prev)+'"' : '')+'>';
+  }
+
+  // Paso 3: se pregunta UNA columna a la vez, de la primera a la última.
   function renderPaso3(){
     const p = atState.plantilla;
-    const cols = (p.columns || []).filter(c => c && c.name && !esColumnaCuenta(c) && !esColumnaDerivada(c));
-    let html = '<div class="at-steptitle">3 · Completá el trade</div>' +
-               '<div class="at-stepsub">Columnas de «'+esc(p.name)+'». Se guarda en la cuenta <b>'+esc(atState.cuenta)+'</b>.</div>';
-    if(!cols.length){
-      html += '<div class="at-empty">Esta plantilla no tiene columnas para completar.</div>';
-    }
-    cols.forEach((c,i) => {
-      const t = norm(c.type);
-      let opts = atColOpts(c);
-      if(!opts.length && t === 'result') opts = ['Win','Loss','No fill'];
-      if(!opts.length && t === 'bool')   opts = ['Sí','No'];
+    const cols = atFillCols();
+    const total = cols.length;
 
-      let field;
-      if(t === 'checklist' && opts.length){
-        field = '<div class="at-check" data-checklist="'+esc(c.name)+'">' +
-          opts.map(o => '<label class="at-checkitem"><input type="checkbox" value="'+esc(o)+'"><span>'+esc(o)+'</span></label>').join('') +
-          '</div>';
-      } else if(esColumnaFecha(c)){
-        field = '<input type="date" data-col="'+esc(c.name)+'"'+(atState.presetDate ? ' value="'+esc(atState.presetDate)+'"' : '')+'>';
-      } else if(t === 'time'){
-        field = '<input type="time" data-col="'+esc(c.name)+'">';
-      } else if(t === 'num'){
-        field = '<input type="number" step="any" data-col="'+esc(c.name)+'" placeholder="…">';
-      } else if(opts.length){
-        const sid = 'at-sel-'+i, oid = 'at-otro-'+i;
-        field = '<select id="'+sid+'" data-col="'+esc(c.name)+'" data-otro="'+oid+'" onchange="atSelOtro(this)">' +
-            '<option value="">— elegir —</option>' +
-            opts.map(o => '<option value="'+esc(o)+'">'+esc(o)+'</option>').join('') +
-            '<option value="__otro__">✏️ Otro…</option>' +
-          '</select>' +
-          '<input type="text" id="'+oid+'" placeholder="Escribí el valor…" style="display:none;margin-top:6px;">';
-      } else {
-        field = '<input type="text" data-col="'+esc(c.name)+'" placeholder="…">';
-      }
-      html += '<div class="at-field"><label>'+esc(c.name)+'</label>'+field+'</div>';
-    });
-    $('at-body').innerHTML = html;
+    // Sin columnas para completar: se guarda directo.
+    if(!total){
+      $('at-body').innerHTML = '<div class="at-steptitle">3 · Completá el trade</div>' +
+        '<div class="at-stepsub">Se guarda en la cuenta <b>'+esc(atState.cuenta)+'</b> · plantilla «'+esc(p.name)+'».</div>' +
+        '<div class="at-empty">Esta plantilla no tiene columnas para completar.</div>';
+      $('at-next').style.display = 'none';
+      $('at-save').style.display = '';
+      $('at-progress').innerHTML = '';
+      $('at-back').textContent = '‹ Atrás';
+      return;
+    }
+
+    // Acotar el índice por si acaso.
+    if(atState.colIdx < 0) atState.colIdx = 0;
+    if(atState.colIdx > total - 1) atState.colIdx = total - 1;
+    const i = atState.colIdx;
+    const c = cols[i];
+    const esUltima = i === total - 1;
+
+    $('at-body').innerHTML =
+      '<div class="at-qcount">Columna '+(i+1)+' de '+total+'</div>' +
+      '<div class="at-steptitle">'+esc(c.name)+'</div>' +
+      '<div class="at-stepsub">Se guarda en la cuenta <b>'+esc(atState.cuenta)+'</b> · plantilla «'+esc(p.name)+'».</div>' +
+      '<div class="at-field">'+atFieldHTML(c, i)+'</div>';
+
+    // Barra de progreso + botones.
+    $('at-progress').innerHTML = '<b>'+(i+1)+'</b> / '+total;
+    $('at-back').textContent = i > 0 ? '‹ Atrás' : '‹ Plantilla';
+    $('at-next').style.display = esUltima ? 'none' : '';
+    $('at-save').style.display = esUltima ? '' : 'none';
+
+    // Enter avanza (o guarda en la última). El foco arranca en el campo.
+    const primer = $('at-body').querySelector('input, select, textarea');
+    if(primer){
+      try{ primer.focus(); }catch(_){}
+      $('at-body').querySelectorAll('input').forEach(inp => {
+        inp.addEventListener('keydown', ev => {
+          if(ev.key === 'Enter'){
+            ev.preventDefault();
+            if(esUltima) atSave(); else atNext();
+          }
+        });
+      });
+    }
   }
 
   // ── guardar ──
@@ -14821,24 +14925,14 @@ async function sbBootData(){
     const btn = $('at-save');
     btn.disabled = true; btn.textContent = 'Guardando…';
     try{
+      // Capturar el valor de la columna visible antes de guardar.
+      atCaptureCurrent();
       const p = atState.plantilla;
       const data = {};
       // Todas las columnas de la plantilla (para respetar su estructura).
       (p.columns || []).forEach(c => { if(c && c.name) data[c.name] = ''; });
-      // Checklists → valores marcados separados por coma.
-      document.querySelectorAll('#at-body [data-checklist]').forEach(box => {
-        const col = box.getAttribute('data-checklist');
-        data[col] = [...box.querySelectorAll('input[type=checkbox]:checked')].map(cb => cb.value).join(', ');
-      });
-      // Inputs y desplegables.
-      document.querySelectorAll('#at-body [data-col]').forEach(inp => {
-        let val = (inp.value || '').trim();
-        if(inp.tagName === 'SELECT' && val === '__otro__'){
-          const otro = document.getElementById(inp.dataset.otro);
-          val = otro ? (otro.value || '').trim() : '';
-        }
-        data[inp.dataset.col] = val;
-      });
+      // Respuestas recogidas columna por columna en el paso 3.
+      Object.keys(atState.answers).forEach(k => { data[k] = atState.answers[k]; });
       // La cuenta elegida: siempre en el campo 'cuenta' (lo lee el calendario).
       const colCuenta = (p.columns || []).find(esColumnaCuenta);
       data[colCuenta ? colCuenta.name : 'cuenta'] = atState.cuenta;
