@@ -14564,6 +14564,21 @@ async function sbBootData(){
 }
 .at-field select:focus{ border-color:var(--cyan); box-shadow:0 0 0 2px rgba(34,243,255,.16); }
 .at-field select option{ background:#0c1424; color:var(--tx); }
+/* Combobox: click despliega opciones y además deja escribir directo. */
+.at-combo{ position:relative; }
+.at-combo-list{
+  display:none; position:absolute; left:0; right:0; top:calc(100% + 4px); z-index:30;
+  max-height:220px; overflow-y:auto;
+  background:#0c1424; border:1px solid rgba(90,168,255,.28); border-radius:8px;
+  box-shadow:0 14px 34px rgba(0,0,0,.55);
+}
+.at-combo-list.open{ display:block; }
+.at-combo-opt{
+  padding:9px 12px; font-family:var(--mono); font-size:13px;
+  color:var(--tx); cursor:pointer; border-bottom:1px solid rgba(90,168,255,.06);
+}
+.at-combo-opt:last-child{ border-bottom:none; }
+.at-combo-opt:hover, .at-combo-opt.at-combo-active{ background:rgba(34,243,255,.10); color:var(--cyan); }
 .at-check{ display:flex; flex-wrap:wrap; gap:8px; }
 .at-checkitem{
   display:flex; align-items:center; gap:6px; padding:7px 12px;
@@ -14685,12 +14700,7 @@ async function sbBootData(){
     }
     const inp = document.querySelector('#at-body [data-col]');
     if(inp){
-      let val = (inp.value || '').trim();
-      if(inp.tagName === 'SELECT' && val === '__otro__'){
-        const otro = document.getElementById(inp.dataset.otro);
-        val = otro ? (otro.value || '').trim() : '';
-      }
-      atState.answers[c.name] = val;
+      atState.answers[c.name] = (inp.value || '').trim();
     }
   }
 
@@ -14820,13 +14830,44 @@ async function sbBootData(){
     return out;
   }
 
-  // Toggle del input "Otro…" en un desplegable.
-  window.atSelOtro = function(sel){
-    const otro = document.getElementById(sel.dataset.otro);
-    if(!otro) return;
-    const show = sel.value === '__otro__';
-    otro.style.display = show ? '' : 'none';
-    if(show){ otro.value = ''; otro.focus(); }
+  // ── Combobox (opciones desplegables + escritura libre) ──
+  // Muestra la lista completa de opciones al enfocar/clickear el campo.
+  window.atComboShow = function(inp){
+    const list = inp.parentNode.querySelector('.at-combo-list');
+    if(!list) return;
+    list.querySelectorAll('.at-combo-opt').forEach(o => { o.style.display = ''; });
+    list.classList.add('open');
+  };
+  // Filtra las opciones a medida que se escribe (sin bloquear el valor libre).
+  window.atComboFilter = function(inp){
+    const list = inp.parentNode.querySelector('.at-combo-list');
+    if(!list) return;
+    const q = (inp.value || '').trim().toLowerCase();
+    let any = false;
+    list.querySelectorAll('.at-combo-opt').forEach(o => {
+      const show = !q || o.textContent.toLowerCase().indexOf(q) !== -1;
+      o.style.display = show ? '' : 'none';
+      if(show) any = true;
+    });
+    list.classList.toggle('open', any);
+  };
+  // Elige una opción de la lista (mousedown para ganar al blur del input).
+  window.atComboPick = function(ev, opt){
+    ev.preventDefault();
+    const combo = opt.closest('.at-combo');
+    if(!combo) return;
+    const inp = combo.querySelector('.at-combo-input');
+    const list = combo.querySelector('.at-combo-list');
+    inp.value = opt.textContent;
+    if(list) list.classList.remove('open');
+    inp.focus();
+  };
+  // Cierra la lista al salir del campo (con delay para no matar el click).
+  window.atComboHide = function(inp){
+    setTimeout(() => {
+      const list = inp.parentNode && inp.parentNode.querySelector('.at-combo-list');
+      if(list) list.classList.remove('open');
+    }, 140);
   };
 
   // HTML del campo de UNA columna, prellenado con lo ya respondido (atState.answers).
@@ -14855,15 +14896,18 @@ async function sbBootData(){
       return '<input type="number" step="any" data-col="'+esc(c.name)+'" placeholder="…"'+(has ? ' value="'+esc(prev)+'"' : '')+'>';
     }
     if(opts.length){
-      const sid = 'at-sel-'+i, oid = 'at-otro-'+i;
-      const enOpts = has && opts.some(o => o === prev);
-      const esOtro = has && prev !== '' && !enOpts;
-      return '<select id="'+sid+'" data-col="'+esc(c.name)+'" data-otro="'+oid+'" onchange="atSelOtro(this)">' +
-          '<option value="">— elegir —</option>' +
-          opts.map(o => '<option value="'+esc(o)+'"'+(o===prev?' selected':'')+'>'+esc(o)+'</option>').join('') +
-          '<option value="__otro__"'+(esOtro?' selected':'')+'>✏️ Otro…</option>' +
-        '</select>' +
-        '<input type="text" id="'+oid+'" placeholder="Escribí el valor…" style="'+(esOtro?'':'display:none;')+'margin-top:6px;"'+(esOtro?' value="'+esc(prev)+'"':'')+'>';
+      // Combobox: al hacer click se despliegan las opciones y además se puede
+      // escribir un valor libre directamente (sin pasar por "Otro…").
+      return '<div class="at-combo">' +
+          '<input type="text" data-col="'+esc(c.name)+'" class="at-combo-input" ' +
+            'placeholder="Elegí una opción o escribí…" autocomplete="off" ' +
+            'onfocus="atComboShow(this)" onclick="atComboShow(this)" ' +
+            'oninput="atComboFilter(this)" onblur="atComboHide(this)"' +
+            (has ? ' value="'+esc(prev)+'"' : '') + '>' +
+          '<div class="at-combo-list">' +
+            opts.map(o => '<div class="at-combo-opt" onmousedown="atComboPick(event,this)">'+esc(o)+'</div>').join('') +
+          '</div>' +
+        '</div>';
     }
     return '<input type="text" data-col="'+esc(c.name)+'" placeholder="…"'+(has ? ' value="'+esc(prev)+'"' : '')+'>';
   }
