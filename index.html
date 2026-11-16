@@ -12312,8 +12312,10 @@ function sbSaveSession(s){
   sbUpdateHeaderBtn();
 }
 function sbIsLogged(){
-  const s = sbState.session;
-  return !!(s && s.access_token && (!s.expires_at || s.expires_at * 1000 > Date.now() + 30000));
+  // Acceso abierto (sin login): la app está siempre disponible y los datos se
+  // leen/escriben con la clave pública (rol anon). Requiere que las políticas
+  // RLS de Supabase permitan el acceso anónimo.
+  return true;
 }
 
 async function sbLogin(email, password){
@@ -12379,13 +12381,14 @@ async function sbUpdatePassword(newPass, accessToken){
 /* ── REST (PostgREST) ── */
 async function sbApi(path, opts){
   opts = opts || {};
-  if(!sbIsLogged()){
-    const ok = await sbRefresh();
-    if(!ok) throw new Error('SIN_SESION');
-  }
+  // Acceso abierto: si hay una sesión válida se usa; si no, se usa la clave
+  // pública (rol anon). Requiere políticas RLS que permitan acceso anónimo.
+  const _valid = () => { const s = sbState.session; return !!(s && s.access_token && (!s.expires_at || s.expires_at*1000 > Date.now()+30000)); };
+  if(!_valid() && sbState.session && sbState.session.refresh_token){ try{ await sbRefresh(); }catch(_){} }
+  const token = _valid() ? sbState.session.access_token : SB_CONFIG.anonKey;
   const headers = Object.assign({
     'apikey': SB_CONFIG.anonKey,
-    'Authorization': 'Bearer ' + sbState.session.access_token,
+    'Authorization': 'Bearer ' + token,
     'Content-Type': 'application/json'
   }, opts.headers || {});
   const res = await fetch(SB_CONFIG.url + '/rest/v1/' + path, {
@@ -14326,10 +14329,11 @@ function ppAbrirTradeDia(dia, i){
   ppAbrirTrade(delDia, i);
 }
 
-/* ── 4) Puerta de entrada: sin sesion no se ve nada ── */
+/* ── 4) Puerta de entrada: DESACTIVADA (acceso abierto, sin login) ── */
 function sbGateShow(){
+  // Acceso abierto: no se muestra ninguna pantalla de login.
   const g = document.getElementById('sb-gate');
-  if(g) g.style.display = 'flex';
+  if(g) g.style.display = 'none';
 }
 function sbGateHide(){
   const g = document.getElementById('sb-gate');
