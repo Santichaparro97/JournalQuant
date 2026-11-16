@@ -4039,12 +4039,10 @@ html, body { background: transparent !important; }
   <div id="sb-gate-inner">
     <div id="sb-gate-logo">JOURNAL QUANT<em>DECISION ENGINE</em></div>
 
-    <!-- Panel normal: iniciar sesión -->
+    <!-- Panel normal: iniciar sesión (solo contraseña; el email es fijo) -->
     <div id="sb-gate-login">
-      <div class="sb-field"><label>Email</label><input type="email" id="sb-gate-email" autocomplete="username" placeholder="tu@mail.com"></div>
       <div class="sb-field"><label>Contraseña</label><input type="password" id="sb-gate-pass" autocomplete="current-password" placeholder="••••••••"></div>
       <button class="sb-primary" id="sb-gate-btn" onclick="sbGateLogin()">Entrar</button>
-      <a id="sb-gate-forgot" onclick="sbGateRecover()">¿Olvidaste tu contraseña?</a>
       <div id="sb-gate-msg"></div>
     </div>
 
@@ -12290,7 +12288,10 @@ const SB_CONFIG = {
   // leer o escribir cualquier cosa (verificado: un anonimo recibe 401).
   anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhkbHNyY3FqcGRtaWRya3d1ZnhlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgyNzgzNjIsImV4cCI6MjA5Mzg1NDM2Mn0.xwWVXVAvBVnyPsmBEHDH62StSCFs_EScK-veJLL-IwA',
   sheetId: '1KxTYlvEXGe1BzRTwRaKA8O_PMEPniC42LSkg-eWY_jM',
-  sheetGid: '0'
+  sheetGid: '0',
+  // Email fijo de la cuenta: la pantalla solo pide la contraseña y la app
+  // inicia sesión en Supabase con este email + la contraseña tipeada.
+  loginEmail: 'santiyque97@gmail.com'
 };
 
 const SB_SESSION_KEY = 'sb_session_v1';
@@ -12342,7 +12343,7 @@ async function sbRefresh(){
   }catch(_){ return false; }
 }
 
-function sbLogout(){ sbSaveSession(null); sbRenderModal(); }
+function sbLogout(){ sbSaveSession(null); try{ sbClose(); }catch(_){} sbGateShow(); }
 
 /* ── recuperación de contraseña (flujo nativo de Supabase) ── */
 // 1) Pide a Supabase que mande el email con el enlace de recuperación.
@@ -14336,22 +14337,22 @@ function sbGateHide(){
 }
 
 async function sbGateLogin(){
-  const email = (document.getElementById('sb-gate-email')||{}).value;
   const pass  = (document.getElementById('sb-gate-pass')||{}).value;
   const msg   = document.getElementById('sb-gate-msg');
   const btn   = document.getElementById('sb-gate-btn');
   const set = (t,c) => { if(msg){ msg.textContent = t; msg.className = c||''; } };
 
-  if(!email || !pass){ set('Completá mail y contraseña.', 'err'); return; }
+  if(!pass){ set('Escribí la contraseña.', 'err'); return; }
   if(btn){ btn.disabled = true; btn.textContent = 'Entrando…'; }
   set('Verificando…', 'info');
   try{
-    await sbLogin(email.trim(), pass);
+    // Email fijo (SB_CONFIG.loginEmail) + la contraseña tipeada.
+    await sbLogin(SB_CONFIG.loginEmail, pass);
     set('Cargando tus trades…', 'info');
     await sbBootData();
     sbGateHide();
   }catch(err){
-    set(err.message === 'Invalid login credentials' ? 'Mail o contraseña incorrectos.' : err.message, 'err');
+    set(err.message === 'Invalid login credentials' ? 'Contraseña incorrecta.' : err.message, 'err');
     if(btn){ btn.disabled = false; btn.textContent = 'Entrar'; }
   }
 }
