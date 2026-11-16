@@ -4038,10 +4038,25 @@ html, body { background: transparent !important; }
 <div id="sb-gate" style="display:none;">
   <div id="sb-gate-inner">
     <div id="sb-gate-logo">JOURNAL QUANT<em>DECISION ENGINE</em></div>
-    <div class="sb-field"><label>Email</label><input type="email" id="sb-gate-email" autocomplete="username" placeholder="tu@mail.com"></div>
-    <div class="sb-field"><label>Contraseña</label><input type="password" id="sb-gate-pass" autocomplete="current-password" placeholder="••••••••"></div>
-    <button class="sb-primary" id="sb-gate-btn" onclick="sbGateLogin()">Entrar</button>
-    <div id="sb-gate-msg"></div>
+
+    <!-- Panel normal: iniciar sesión -->
+    <div id="sb-gate-login">
+      <div class="sb-field"><label>Email</label><input type="email" id="sb-gate-email" autocomplete="username" placeholder="tu@mail.com"></div>
+      <div class="sb-field"><label>Contraseña</label><input type="password" id="sb-gate-pass" autocomplete="current-password" placeholder="••••••••"></div>
+      <button class="sb-primary" id="sb-gate-btn" onclick="sbGateLogin()">Entrar</button>
+      <a id="sb-gate-forgot" onclick="sbGateRecover()">¿Olvidaste tu contraseña?</a>
+      <div id="sb-gate-msg"></div>
+    </div>
+
+    <!-- Panel que aparece al volver desde el email de recuperación -->
+    <div id="sb-gate-reset" style="display:none;">
+      <div class="sb-note" style="text-align:center;">Elegí tu nueva contraseña para <b id="sb-reset-who">tu cuenta</b>.</div>
+      <div class="sb-field"><label>Nueva contraseña</label><input type="password" id="sb-reset-p1" autocomplete="new-password" placeholder="mínimo 6 caracteres"></div>
+      <div class="sb-field"><label>Repetir contraseña</label><input type="password" id="sb-reset-p2" autocomplete="new-password" placeholder="••••••••"></div>
+      <button class="sb-primary" id="sb-reset-btn" onclick="sbGateSetNewPass()">Guardar nueva contraseña</button>
+      <a id="sb-reset-cancel" onclick="sbGateResetCancel()">Volver al inicio de sesión</a>
+      <div id="sb-reset-msg"></div>
+    </div>
   </div>
 </div>
 
@@ -12329,6 +12344,37 @@ async function sbRefresh(){
 
 function sbLogout(){ sbSaveSession(null); sbRenderModal(); }
 
+/* ── recuperación de contraseña (flujo nativo de Supabase) ── */
+// 1) Pide a Supabase que mande el email con el enlace de recuperación.
+async function sbRecover(email){
+  // Al tocar el enlace del mail, el usuario vuelve a esta misma web con un
+  // token en el #hash. redirect_to debe estar permitido en Supabase
+  // (Authentication → URL Configuration → Redirect URLs).
+  const redirectTo = location.origin + location.pathname;
+  const res = await fetch(SB_CONFIG.url + '/auth/v1/recover?redirect_to=' + encodeURIComponent(redirectTo), {
+    method:'POST',
+    headers:{ 'apikey': SB_CONFIG.anonKey, 'Content-Type':'application/json' },
+    body: JSON.stringify({ email })
+  });
+  // Supabase responde 200 aunque el mail no exista (para no revelar usuarios).
+  if(!res.ok){
+    const j = await res.json().catch(()=>({}));
+    throw new Error(j.msg || j.error_description || j.message || 'No se pudo enviar el enlace.');
+  }
+  return true;
+}
+// 2) Con el token del enlace ya en la sesión, fija la nueva contraseña.
+async function sbUpdatePassword(newPass, accessToken){
+  const res = await fetch(SB_CONFIG.url + '/auth/v1/user', {
+    method:'PUT',
+    headers:{ 'apikey': SB_CONFIG.anonKey, 'Authorization':'Bearer '+accessToken, 'Content-Type':'application/json' },
+    body: JSON.stringify({ password: newPass })
+  });
+  const j = await res.json().catch(()=>({}));
+  if(!res.ok) throw new Error(j.msg || j.error_description || j.message || 'No se pudo cambiar la contraseña.');
+  return j;
+}
+
 /* ── REST (PostgREST) ── */
 async function sbApi(path, opts){
   opts = opts || {};
@@ -12549,6 +12595,13 @@ function sbUpdateHeaderBtn(){
 #sb-gate .sb-field input{ font-size:15px; padding:12px; }
 #sb-gate-msg{ font-size:11px; font-weight:700; font-family:var(--mono); text-align:center; min-height:16px; }
 #sb-gate-msg.err{ color:var(--red2); } #sb-gate-msg.info{ color:var(--cyan); }
+#sb-reset-msg{ font-size:11px; font-weight:700; font-family:var(--mono); text-align:center; min-height:16px; }
+#sb-reset-msg.err{ color:var(--red2); } #sb-reset-msg.info{ color:var(--cyan); }
+#sb-gate-forgot, #sb-reset-cancel{
+  display:block; text-align:center; cursor:pointer; font-size:12px;
+  color:var(--cyan); text-decoration:none; margin-top:-2px; user-select:none;
+}
+#sb-gate-forgot:hover, #sb-reset-cancel:hover{ text-decoration:underline; }
 </style>
 
 <script>
@@ -14303,7 +14356,105 @@ async function sbGateLogin(){
   }
 }
 
-/** Carga inicial de datos una vez que hay sesion. */
+/* ── recuperación de contraseña: interfaz del gate ── */
+
+// Toca "¿Olvidaste tu contraseña?": manda el enlace al email tipeado arriba.
+async function sbGateRecover(){
+  const email = ((document.getElementById('sb-gate-email')||{}).value || '').trim();
+  const msg   = document.getElementById('sb-gate-msg');
+  const link  = document.getElementById('sb-gate-forgot');
+  const set = (t,c) => { if(msg){ msg.textContent = t; msg.className = c||''; } };
+  if(!email){
+    set('Escribí tu email arriba y volvé a tocar el enlace.', 'err');
+    const e = document.getElementById('sb-gate-email'); if(e) e.focus();
+    return;
+  }
+  if(link){ link.style.pointerEvents = 'none'; link.style.opacity = '.5'; }
+  set('Enviando enlace…', 'info');
+  try{
+    await sbRecover(email);
+    set('Te enviamos un email a ' + email + ' con el enlace para cambiar la contraseña. Revisá también el spam.', 'info');
+  }catch(err){
+    set(err.message || 'No se pudo enviar el enlace.', 'err');
+  }finally{
+    if(link){ link.style.pointerEvents = ''; link.style.opacity = ''; }
+  }
+}
+
+// Muestra el panel para fijar nueva contraseña (al volver desde el email).
+function sbGateShowReset(email){
+  const L = document.getElementById('sb-gate-login');
+  const R = document.getElementById('sb-gate-reset');
+  const who = document.getElementById('sb-reset-who');
+  if(L) L.style.display = 'none';
+  if(R) R.style.display = '';
+  if(who && email) who.textContent = email;
+  sbGateShow();
+  const p1 = document.getElementById('sb-reset-p1');
+  if(p1){ try{ p1.focus(); }catch(_){} }
+}
+
+// Vuelve del panel de nueva contraseña al login normal.
+function sbGateResetCancel(){
+  const L = document.getElementById('sb-gate-login');
+  const R = document.getElementById('sb-gate-reset');
+  if(R) R.style.display = 'none';
+  if(L) L.style.display = '';
+  sbState._recoveryToken = null;
+  try{ sbSaveSession(null); }catch(_){}
+}
+
+// Guarda la nueva contraseña usando el token del enlace de recuperación.
+async function sbGateSetNewPass(){
+  const p1  = (document.getElementById('sb-reset-p1')||{}).value || '';
+  const p2  = (document.getElementById('sb-reset-p2')||{}).value || '';
+  const msg = document.getElementById('sb-reset-msg');
+  const btn = document.getElementById('sb-reset-btn');
+  const set = (t,c) => { if(msg){ msg.textContent = t; msg.className = c||''; } };
+
+  if(p1.length < 6){ set('La contraseña debe tener al menos 6 caracteres.', 'err'); return; }
+  if(p1 !== p2){ set('Las contraseñas no coinciden.', 'err'); return; }
+
+  const token = sbState._recoveryToken || (sbState.session && sbState.session.access_token);
+  if(!token){ set('El enlace venció. Pedí uno nuevo desde «¿Olvidaste tu contraseña?».', 'err'); return; }
+
+  if(btn){ btn.disabled = true; btn.textContent = 'Guardando…'; }
+  set('Guardando…', 'info');
+  try{
+    await sbUpdatePassword(p1, token);
+    sbState._recoveryToken = null;
+    set('¡Listo! Contraseña actualizada. Entrando…', 'info');
+    // El token de recuperación ya es una sesión válida: cargamos los datos.
+    await sbBootData();
+    sbGateHide();
+    // Dejar el gate preparado por si se cierra sesión más tarde.
+    const L = document.getElementById('sb-gate-login');
+    const R = document.getElementById('sb-gate-reset');
+    if(R) R.style.display = 'none';
+    if(L) L.style.display = '';
+  }catch(err){
+    set(err.message || 'No se pudo cambiar la contraseña.', 'err');
+    if(btn){ btn.disabled = false; btn.textContent = 'Guardar nueva contraseña'; }
+  }
+}
+
+// Lee el #hash cuando el usuario vuelve desde el email de recuperación.
+function sbParseRecoveryHash(){
+  const h = location.hash || '';
+  if(h.indexOf('access_token=') === -1 || h.indexOf('type=recovery') === -1) return null;
+  const p = new URLSearchParams(h.replace(/^#/, ''));
+  if(p.get('type') !== 'recovery' || !p.get('access_token')) return null;
+  const exp = Number(p.get('expires_in') || 3600);
+  return {
+    access_token:  p.get('access_token'),
+    refresh_token: p.get('refresh_token') || '',
+    expires_in:    exp,
+    expires_at:    Math.floor(Date.now()/1000) + exp,
+    token_type:    p.get('token_type') || 'bearer',
+    type:          'recovery'
+  };
+}
+
 async function sbBootData(){
   // Corta el auto-refresh contra Google Sheets: la fuente ahora es Supabase.
   try{ if(typeof _gsInterval !== 'undefined' && _gsInterval){ clearInterval(_gsInterval); _gsInterval = null; } }catch(_){}
@@ -14323,6 +14474,18 @@ async function sbBootData(){
     // dibujado, sin esperar a que terminen las llamadas async de datos. El
     // sbBootData() posterior lo refresca cuando llegan los trades.
     try{ navSetView('panel'); }catch(_){}
+
+    // ¿Viene del email de recuperación? Mostrar el panel de nueva contraseña.
+    const rec = sbParseRecoveryHash();
+    if(rec){
+      sbSaveSession(rec);                 // token válido para poder cambiar la clave
+      sbState._recoveryToken = rec.access_token;
+      try{ history.replaceState(null, '', location.pathname + location.search); }catch(_){}
+      sbGateShowReset('');
+      const rp = document.getElementById('sb-reset-p2');
+      if(rp) rp.addEventListener('keydown', e => { if(e.key === 'Enter') sbGateSetNewPass(); });
+      return; // no seguir con el flujo normal de login
+    }
 
     sbLoadSession();
     if(sbIsLogged()){
